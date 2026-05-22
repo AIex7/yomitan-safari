@@ -317,6 +317,16 @@ type ApiSurface = {
         };
         return: boolean;
     };
+    getSafariInlineScanEnabledForActiveTab: {
+        params: void;
+        return: boolean;
+    };
+    setSafariInlineScanEnabledForActiveTab: {
+        params: {
+            enabled: boolean;
+        };
+        return: boolean;
+    };
     getDefaultAnkiFieldTemplates: {
         params: void;
         return: string;

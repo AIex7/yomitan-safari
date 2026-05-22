@@ -288,6 +288,21 @@ export class API {
     }
 
     /**
+     * @returns {Promise<import('api').ApiReturn<'getSafariInlineScanEnabledForActiveTab'>>}
+     */
+    getSafariInlineScanEnabledForActiveTab() {
+        return this._invoke('getSafariInlineScanEnabledForActiveTab', void 0);
+    }
+
+    /**
+     * @param {import('api').ApiParam<'setSafariInlineScanEnabledForActiveTab', 'enabled'>} enabled
+     * @returns {Promise<import('api').ApiReturn<'setSafariInlineScanEnabledForActiveTab'>>}
+     */
+    setSafariInlineScanEnabledForActiveTab(enabled) {
+        return this._invoke('setSafariInlineScanEnabledForActiveTab', {enabled});
+    }
+
+    /**
      * @returns {Promise<import('api').ApiReturn<'getDefaultAnkiFieldTemplates'>>}
      */
     getDefaultAnkiFieldTemplates() {

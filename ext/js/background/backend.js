@@ -140,8 +140,8 @@ export class Backend {
         this._permissions = null;
         /** @type {Map<string, (() => void)[]>} */
         this._applicationReadyHandlers = new Map();
-        /** @type {Map<number, boolean>} */
-        this._safariInlineScanEnabledTabs = new Map();
+        /** @type {Map<string, boolean>} */
+        this._safariInlineScanEnabledDomains = new Map();
 
         /* eslint-disable @stylistic/no-multi-spaces */
         /** @type {import('api').ApiMap} */
@@ -178,6 +178,8 @@ export class Backend {
             ['getZoom',                      this._onApiGetZoom.bind(this)],
             ['getSafariInlineScanEnabled',   this._onApiGetSafariInlineScanEnabled.bind(this)],
             ['setSafariInlineScanEnabled',   this._onApiSetSafariInlineScanEnabled.bind(this)],
+            ['getSafariInlineScanEnabledForActiveTab', this._onApiGetSafariInlineScanEnabledForActiveTab.bind(this)],
+            ['setSafariInlineScanEnabledForActiveTab', this._onApiSetSafariInlineScanEnabledForActiveTab.bind(this)],
             ['getDefaultAnkiFieldTemplates', this._onApiGetDefaultAnkiFieldTemplates.bind(this)],
             ['getDictionaryInfo',            this._onApiGetDictionaryInfo.bind(this)],
             ['purgeDatabase',                this._onApiPurgeDatabase.bind(this)],
@@ -264,6 +266,10 @@ export class Backend {
         if (isObjectNotArray(chrome.tabs) && isObjectNotArray(chrome.tabs.onRemoved)) {
             const onTabRemoved = this._onWebExtensionEventWrapper(this._onTabRemoved.bind(this));
             chrome.tabs.onRemoved.addListener(onTabRemoved);
+        }
+        if (isObjectNotArray(chrome.tabs) && isObjectNotArray(chrome.tabs.onActivated)) {
+            const onTabActivated = this._onWebExtensionEventWrapper(this._onTabActivated.bind(this));
+            chrome.tabs.onActivated.addListener(onTabActivated);
         }
 
         const onMessage = this._onMessageWrapper.bind(this);
@@ -499,7 +505,17 @@ export class Backend {
      * @returns {void}
      */
     _onTabRemoved(tabId) {
-        void this._clearSafariInlineScanEnabledTabState(tabId);
+        void tabId;
+    }
+
+    /**
+     * @param {chrome.tabs.TabActiveInfo} activeInfo
+     * @returns {Promise<void>}
+     */
+    async _onTabActivated({tabId}) {
+        const url = await this._getTabUrl(tabId);
+        if (typeof url !== 'string') { return; }
+        this._sendMessageTabIgnoreResponse(tabId, {action: 'frontendUpdateSafariInlineScanEnabled'}, {});
     }
 
     /**
@@ -976,6 +992,29 @@ export class Backend {
         const tabId = sender.tab?.id;
         if (typeof tabId !== 'number') { return false; }
         await this._setSafariInlineScanEnabledTabState(tabId, enabled);
+        const url = await this._getTabUrl(tabId);
+        if (typeof url === 'string') {
+            await this._refreshSafariInlineScanEnabledForUrl(url);
+        }
+        return true;
+    }
+
+    /** @type {import('api').ApiHandler<'getSafariInlineScanEnabledForActiveTab'>} */
+    async _onApiGetSafariInlineScanEnabledForActiveTab() {
+        const tabId = await this._getActiveTabId();
+        if (tabId === null) { return false; }
+        return await this._getSafariInlineScanEnabledTabState(tabId);
+    }
+
+    /** @type {import('api').ApiHandler<'setSafariInlineScanEnabledForActiveTab'>} */
+    async _onApiSetSafariInlineScanEnabledForActiveTab({enabled}) {
+        const tabId = await this._getActiveTabId();
+        if (tabId === null) { return false; }
+        await this._setSafariInlineScanEnabledTabState(tabId, enabled);
+        const url = await this._getTabUrl(tabId);
+        if (typeof url === 'string') {
+            await this._refreshSafariInlineScanEnabledForUrl(url);
+        }
         return true;
     }
 
@@ -3000,11 +3039,11 @@ export class Backend {
     }
 
     /**
-     * @param {number} tabId
+     * @param {string} domain
      * @returns {string}
      */
-    _getSafariInlineScanEnabledStorageKey(tabId) {
-        return `safariInlineScanEnabledTab:${tabId}`;
+    _getSafariInlineScanEnabledStorageKey(domain) {
+        return `safariInlineScanEnabledDomain:${domain}`;
     }
 
     /**
@@ -3012,16 +3051,9 @@ export class Backend {
      * @returns {Promise<boolean>}
      */
     async _getSafariInlineScanEnabledTabState(tabId) {
-        if (this._safariInlineScanEnabledTabs.has(tabId)) {
-            return this._safariInlineScanEnabledTabs.get(tabId) === true;
-        }
-
-        const storage = getTemporaryStorage();
-        const key = this._getSafariInlineScanEnabledStorageKey(tabId);
-        const result = await storage.get([key]);
-        const enabled = result[key] === true;
-        this._safariInlineScanEnabledTabs.set(tabId, enabled);
-        return enabled;
+        const url = await this._getTabUrl(tabId);
+        if (typeof url !== 'string') { return false; }
+        return await this._getSafariInlineScanEnabledUrlState(url);
     }
 
     /**
@@ -3030,21 +3062,124 @@ export class Backend {
      * @returns {Promise<void>}
      */
     async _setSafariInlineScanEnabledTabState(tabId, enabled) {
-        this._safariInlineScanEnabledTabs.set(tabId, enabled);
+        const url = await this._getTabUrl(tabId);
+        if (typeof url !== 'string') { return; }
+        await this._setSafariInlineScanEnabledUrlState(url, enabled);
+    }
+
+    /**
+     * @param {string} url
+     * @returns {Promise<boolean>}
+     */
+    async _getSafariInlineScanEnabledUrlState(url) {
+        const domain = this._getUrlDomain(url);
+        if (domain === null) { return false; }
+        if (this._safariInlineScanEnabledDomains.has(domain)) {
+            return this._safariInlineScanEnabledDomains.get(domain) === true;
+        }
+
         const storage = getTemporaryStorage();
-        const key = this._getSafariInlineScanEnabledStorageKey(tabId);
+        const key = this._getSafariInlineScanEnabledStorageKey(domain);
+        const result = await storage.get([key]);
+        const enabled = result[key] === true;
+        this._safariInlineScanEnabledDomains.set(domain, enabled);
+        return enabled;
+    }
+
+    /**
+     * @param {string} url
+     * @param {boolean} enabled
+     * @returns {Promise<void>}
+     */
+    async _setSafariInlineScanEnabledUrlState(url, enabled) {
+        const domain = this._getUrlDomain(url);
+        if (domain === null) { return; }
+        this._safariInlineScanEnabledDomains.set(domain, enabled);
+        const storage = getTemporaryStorage();
+        const key = this._getSafariInlineScanEnabledStorageKey(domain);
         await storage.set({[key]: enabled});
     }
 
     /**
-     * @param {number} tabId
+     * @param {string} url
      * @returns {Promise<void>}
      */
-    async _clearSafariInlineScanEnabledTabState(tabId) {
-        this._safariInlineScanEnabledTabs.delete(tabId);
-        const storage = getTemporaryStorage();
-        const key = this._getSafariInlineScanEnabledStorageKey(tabId);
-        await storage.remove([key]);
+    async _refreshSafariInlineScanEnabledForUrl(url) {
+        const domain = this._getUrlDomain(url);
+        if (domain === null) { return; }
+
+        for (const {tab} of await this._findTabs(2000, true, async ({url: tabUrl}) => this._getUrlDomain(tabUrl ?? '') === domain, true)) {
+            const {id} = tab;
+            if (typeof id !== 'number') { continue; }
+            this._sendMessageTabIgnoreResponse(id, {action: 'frontendUpdateSafariInlineScanEnabled'}, {});
+        }
+    }
+
+    /**
+     * @param {string} url
+     * @returns {?string}
+     */
+    _getUrlDomain(url) {
+        try {
+            const parsedUrl = new URL(url);
+            switch (parsedUrl.protocol) {
+                case 'http:':
+                case 'https:':
+                    return this._getRegistrableDomain(parsedUrl.hostname.toLowerCase());
+                default:
+                    return null;
+            }
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * @param {string} hostname
+     * @returns {?string}
+     */
+    _getRegistrableDomain(hostname) {
+        if (hostname.length === 0) { return null; }
+        if (hostname === 'localhost') { return hostname; }
+        if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':')) {
+            return hostname;
+        }
+
+        const parts = hostname.split('.').filter((part) => part.length > 0);
+        if (parts.length <= 2) {
+            return hostname;
+        }
+
+        const secondLevelTlds = new Set(['ac', 'co', 'com', 'edu', 'gov', 'net', 'org']);
+        const last = parts.at(-1);
+        const secondLast = parts.at(-2);
+        if (
+            typeof last === 'string' &&
+            typeof secondLast === 'string' &&
+            last.length === 2 &&
+            secondLevelTlds.has(secondLast)
+        ) {
+            return parts.slice(-3).join('.');
+        }
+
+        return parts.slice(-2).join('.');
+    }
+
+    /**
+     * @returns {Promise<?number>}
+     */
+    async _getActiveTabId() {
+        return await new Promise((resolve, reject) => {
+            chrome.tabs.query({active: true, lastFocusedWindow: true}, (tabs) => {
+                const e = chrome.runtime.lastError;
+                if (e) {
+                    reject(new Error(e.message));
+                    return;
+                }
+                const tab = Array.isArray(tabs) && tabs.length > 0 ? tabs[0] : null;
+                resolve(tab !== null && typeof tab.id === 'number' ? tab.id : null);
+            });
+        });
     }
 
     /**

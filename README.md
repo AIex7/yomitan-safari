@@ -35,7 +35,6 @@ In Xcode:
 
 ## Scanning
 
-- Scanning is tracked per tab.
-- Press your configured main scan modifier key once to enable auto scan for the current tab.
-- Press the same modifier key again to disable auto scan for that tab.
+- On Safari for macOS, inline auto-scanning is tracked per domain.
+- Use the toolbar popup toggle to enable or disable inline auto-scanning for the current domain.
 - On Safari for macOS, Live Text in images is supported when you select the text with the mouse.

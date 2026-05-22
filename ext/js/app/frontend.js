@@ -202,13 +202,6 @@ export class Frontend {
         this._textIndicatorContainer = null;
         /** @type {boolean} */
         this._safariInlineScanEnabled = false;
-        /** @type {?import('input').ModifierKey} */
-        this._safariInlineToggleModifierKey = 'shift';
-        /** @type {boolean} */
-        this._safariInlineToggleArmed = false;
-        /** @type {boolean} */
-        this._safariInlineToggleInvalid = false;
-
         /* eslint-disable @stylistic/no-multi-spaces */
         /** @type {import('application').ApiMap} */
         this._runtimeApiMap = createApiMap([
@@ -216,6 +209,7 @@ export class Frontend {
             ['frontendSetAllVisibleOverride',   this._onApiSetAllVisibleOverride.bind(this)],
             ['frontendClearAllVisibleOverride', this._onApiClearAllVisibleOverride.bind(this)],
             ['frontendScanSelectedText',        this._onApiScanSelectedText.bind(this)],
+            ['frontendUpdateSafariInlineScanEnabled', this._onApiUpdateSafariInlineScanEnabled.bind(this)],
         ]);
 
         this._hotkeyHandler.registerActions([
@@ -269,8 +263,8 @@ export class Frontend {
 
         window.addEventListener('resize', this._onResize.bind(this), false);
         window.addEventListener('scroll', this._onScroll.bind(this), true);
-        window.addEventListener('keydown', this._onKeyDown.bind(this), true);
-        window.addEventListener('keyup', this._onKeyUp.bind(this), true);
+        window.addEventListener('focus', this._onWindowFocus.bind(this), false);
+        document.addEventListener('visibilitychange', this._onVisibilityChange.bind(this), false);
         document.addEventListener('selectionchange', this._onSelectionChange.bind(this), true);
         addFullscreenChangeEventListener(this._updatePopup.bind(this));
 
@@ -510,6 +504,11 @@ export class Frontend {
         return await this._popupFactory.clearAllVisibleOverride(token);
     }
 
+    /** @type {import('application').ApiHandler<'frontendUpdateSafariInlineScanEnabled'>} */
+    async _onApiUpdateSafariInlineScanEnabled() {
+        await this._syncSafariInlineScanEnabledState();
+    }
+
     // Private
 
     /**
@@ -519,45 +518,15 @@ export class Frontend {
         void this._updatePopupPosition();
     }
 
-    /**
-     * @param {KeyboardEvent} e
-     * @returns {void}
-     */
-    _onKeyDown(e) {
-        if (!this._isSafariInlinePopupMode() || e.repeat) { return; }
-        const toggleModifierKey = this._safariInlineToggleModifierKey;
-        if (toggleModifierKey === null) { return; }
-        if (this._isKeyboardEventForModifierKey(e, toggleModifierKey)) {
-            if (!this._safariInlineToggleArmed) {
-                this._safariInlineToggleArmed = true;
-                this._safariInlineToggleInvalid = false;
-            }
-            return;
-        }
-        if (this._safariInlineToggleArmed) {
-            this._safariInlineToggleInvalid = true;
-        }
+    /** */
+    _onWindowFocus() {
+        void this._syncSafariInlineScanEnabledState();
     }
 
-    /**
-     * @param {KeyboardEvent} e
-     * @returns {void}
-     */
-    _onKeyUp(e) {
-        if (!this._isSafariInlinePopupMode()) { return; }
-        const toggleModifierKey = this._safariInlineToggleModifierKey;
-        if (toggleModifierKey === null || !this._isKeyboardEventForModifierKey(e, toggleModifierKey)) { return; }
-        if (this._safariInlineToggleArmed && !this._safariInlineToggleInvalid) {
-            this._safariInlineScanEnabled = !this._safariInlineScanEnabled;
-            void this._persistSafariInlineScanEnabled();
-            this._updateTextScannerEnabled();
-            if (!this._safariInlineScanEnabled) {
-                this._clearSelection(true);
-                this._clearMousePosition();
-            }
-        }
-        this._safariInlineToggleArmed = false;
-        this._safariInlineToggleInvalid = false;
+    /** */
+    _onVisibilityChange() {
+        if (document.visibilityState !== 'visible') { return; }
+        void this._syncSafariInlineScanEnabledState();
     }
 
     /**
@@ -792,9 +761,6 @@ export class Frontend {
         const preventMiddleMouseOnTextHover = scanningOptions.preventMiddleMouse.onTextHover;
         const preventBackForwardOnPage = this._getPreventSecondaryMouseValueForPageType(scanningOptions.preventBackForward);
         const preventBackForwardOnTextHover = scanningOptions.preventBackForward.onTextHover;
-        this._safariInlineToggleModifierKey = this._getSafariInlineToggleModifierKey(scanningOptions.inputs);
-        this._safariInlineToggleArmed = false;
-        this._safariInlineToggleInvalid = false;
         const scanningInputs = /** @type {import('settings').ScanningInput[]} */ (
             this._isSafariInlinePopupMode() ?
             this._getSafariInlineScanningInputs(scanningOptions.inputs) :
@@ -863,72 +829,6 @@ export class Frontend {
     }
 
     /**
-     * @param {import('settings').ScanningInput[]} inputs
-     * @returns {?import('input').ModifierKey}
-     */
-    _getSafariInlineToggleModifierKey(inputs) {
-        if (!Array.isArray(inputs)) { return 'shift'; }
-        for (const input of inputs) {
-            const {include, exclude, types} = input;
-            const isMouseInput = (
-                typeof types === 'object' &&
-                types !== null &&
-                types.mouse === true
-            );
-            if (!isMouseInput) { continue; }
-            const includeValues = this._splitModifiers(include);
-            const excludeValues = this._splitModifiers(exclude);
-            if (
-                (
-                    includeValues.length === 0 ||
-                    (includeValues.length === 1 && !this._isMouseModifier(includeValues[0]))
-                ) &&
-                excludeValues.length === 1 &&
-                excludeValues[0] === 'mouse0'
-            ) {
-                return (includeValues.length === 0 ? null : /** @type {import('input').ModifierKey} */ (includeValues[0]));
-            }
-        }
-        return 'shift';
-    }
-
-    /**
-     * @param {string} value
-     * @returns {import('input').Modifier[]}
-     */
-    _splitModifiers(value) {
-        return value.split(/[,;\s]+/).map((v) => v.trim().toLowerCase()).filter((v) => v.length > 0);
-    }
-
-    /**
-     * @param {string} value
-     * @returns {boolean}
-     */
-    _isMouseModifier(value) {
-        return /^mouse\d+$/.test(value);
-    }
-
-    /**
-     * @param {KeyboardEvent} e
-     * @param {import('input').ModifierKey} modifierKey
-     * @returns {boolean}
-     */
-    _isKeyboardEventForModifierKey(e, modifierKey) {
-        switch (modifierKey) {
-            case 'alt':
-                return (e.key === 'Alt' || e.code === 'AltLeft' || e.code === 'AltRight');
-            case 'ctrl':
-                return (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight');
-            case 'meta':
-                return (e.key === 'Meta' || e.code === 'MetaLeft' || e.code === 'MetaRight');
-            case 'shift':
-                return (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight');
-            default:
-                return false;
-        }
-    }
-
-    /**
      * @returns {Promise<void>}
      */
     async _restoreSafariInlineScanEnabled() {
@@ -949,6 +849,19 @@ export class Frontend {
             await this._application.api.setSafariInlineScanEnabled(this._safariInlineScanEnabled);
         } catch (e) {
             log.error(e);
+        }
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
+    async _syncSafariInlineScanEnabledState() {
+        if (!this._isSafariInlinePopupMode()) { return; }
+        await this._restoreSafariInlineScanEnabled();
+        this._updateTextScannerEnabled();
+        if (!this._safariInlineScanEnabled) {
+            this._clearSelection(true);
+            this._clearMousePosition();
         }
     }
 

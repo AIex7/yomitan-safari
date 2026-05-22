@@ -30,6 +30,8 @@ class DisplayController {
         this._api = api;
         /** @type {?import('settings').Options} */
         this._optionsFull = null;
+        /** @type {boolean} */
+        this._isSafariBrowser = false;
         /** @type {ThemeController} */
         this._themeController = new ThemeController(document.documentElement);
         /** @type {HotkeyUtil} */
@@ -43,6 +45,7 @@ class DisplayController {
         const manifest = chrome.runtime.getManifest();
 
         const {platform: {os}} = await this._api.getEnvironmentInfo();
+        this._isSafariBrowser = await this._isSafari();
         this._hotkeyUtil.os = os;
 
         this._showExtensionInfo(manifest);
@@ -67,7 +70,7 @@ class DisplayController {
         const {profiles, profileCurrent} = optionsFull;
         const defaultProfile = (profileCurrent >= 0 && profileCurrent < profiles.length) ? profiles[profileCurrent] : null;
         if (defaultProfile !== null) {
-            this._setupOptions(defaultProfile);
+            await this._setupOptions(defaultProfile);
         }
 
         /** @type {NodeListOf<HTMLElement>} */
@@ -86,10 +89,17 @@ class DisplayController {
     // Private
 
     /** */
-    _updateDisplayModifierKey() {
+    _updateDisplayModifierKey(safariInlineScanEnabled = false) {
         const {profiles, profileCurrent} = /** @type {import('settings').Options} */ (this._optionsFull);
         /** @type {NodeListOf<HTMLElement>} */
         const modifierKeyHint = document.querySelectorAll('.tooltip');
+
+        if (this._isSafariBrowser) {
+            for (let i = 0; i < modifierKeyHint.length; i++) {
+                modifierKeyHint[i].textContent = safariInlineScanEnabled ? 'Scan automatically on this domain' : 'Scanning disabled on this domain';
+            }
+            return;
+        }
 
         const currentModifierKey = profiles[profileCurrent].options.scanning.inputs[0].include;
 
@@ -228,16 +238,25 @@ class DisplayController {
     /**
      * @param {import('settings').Profile} profile
      */
-    _setupOptions({options}) {
+    async _setupOptions({options}) {
         const extensionEnabled = options.general.enable;
-        const onToggleChanged = () => this._api.commandExec('toggleTextScanning');
+        const safariInlineScanEnabled = this._isSafariBrowser ? await this._api.getSafariInlineScanEnabledForActiveTab() : false;
+        const onToggleChanged = (e) => {
+            const toggle = /** @type {HTMLInputElement} */ (e.currentTarget);
+            if (this._isSafariBrowser) {
+                void this._api.setSafariInlineScanEnabledForActiveTab(toggle.checked);
+            } else {
+                void this._api.commandExec('toggleTextScanning');
+            }
+        };
         for (const toggle of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('.enable-search,.enable-search2'))) {
-            if (toggle.checked !== extensionEnabled) {
-                toggle.checked = extensionEnabled;
+            const checked = this._isSafariBrowser ? safariInlineScanEnabled : extensionEnabled;
+            if (toggle.checked !== checked) {
+                toggle.checked = checked;
             }
             toggle.addEventListener('change', onToggleChanged, false);
         }
-        void this._updateDisplayModifierKey();
+        void this._updateDisplayModifierKey(safariInlineScanEnabled);
         void this._updateDictionariesEnabledWarnings(options);
         void this._updatePermissionsWarnings(options);
 
@@ -298,7 +317,7 @@ class DisplayController {
                 optionsFull.profileCurrent = value;
                 const defaultProfile = optionsFull.profiles[optionsFull.profileCurrent];
                 if (defaultProfile !== null) {
-                    this._setupOptions(defaultProfile);
+                    void this._setupOptions(defaultProfile);
                 }
             }
         }
