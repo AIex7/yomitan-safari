@@ -40,5 +40,5 @@ In Xcode:
 ## Scanning
 
 - On Safari for macOS, inline auto-scanning is tracked per domain.
-- Use the toolbar popup toggle to enable or disable inline auto-scanning for the current domain.
+- Tap your modifier to toggle auto scanning. Or, use the toolbar popup toggle to enable or disable inline auto-scanning for the current domain.
 - On Safari for macOS, Live Text in images is supported when you select the text with the mouse.
