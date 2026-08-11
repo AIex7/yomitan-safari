@@ -561,16 +561,30 @@ export class AnkiConnect {
      */
     _getNoteQuery(note) {
         let query = '';
+        if (!this._getDuplicateScopeCheckAllModels(note)) {
+            query += `"note:${this._escapeQuery(note.modelName)}" `;
+        }
         switch (this._getDuplicateScopeFromNote(note)) {
             case 'deck':
-                query = `"deck:${this._escapeQuery(note.deckName)}" `;
+                query += `"deck:${this._escapeQuery(note.deckName)}" `;
                 break;
             case 'deck-root':
-                query = `"deck:${this._escapeQuery(getRootDeckName(note.deckName))}" `;
+                query += `"deck:${this._escapeQuery(getRootDeckName(note.deckName))}" `;
                 break;
         }
         query += this._fieldsToQuery(note.fields);
         return query;
+    }
+
+    /**
+     * @param {import('anki').Note} note
+     * @returns {boolean}
+     */
+    _getDuplicateScopeCheckAllModels(note) {
+        const {options} = note;
+        if (typeof options !== 'object' || options === null) { return false; }
+        const {duplicateScopeOptions} = options;
+        return typeof duplicateScopeOptions === 'object' && duplicateScopeOptions !== null && duplicateScopeOptions.checkAllModels === true;
     }
 
     /**

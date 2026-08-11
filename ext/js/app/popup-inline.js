@@ -464,17 +464,18 @@ export class PopupInline extends EventDispatcher {
             buttonContainer.appendChild(saveButton);
 
             try {
-                const [noteInfo] = await this._application.api.getAnkiNoteInfo([note], false);
+                const expressionFieldName = this._getExpressionFieldName(cardFormat);
+                const definitionDetails = this._ankiNoteBuilder.getDictionaryEntryDetailsForNote(dictionaryEntry);
+                const term = ('term' in definitionDetails ? definitionDetails.term : null);
+                const previewNote = (
+                    expressionFieldName !== null && typeof term === 'string' && term.length > 0 ?
+                    {...note, fields: {[expressionFieldName]: term}} :
+                    note
+                );
+                const [noteInfo] = await this._application.api.getAnkiNoteInfo([previewNote], false);
                 const noteIds = Array.isArray(noteInfo?.noteIds) ? noteInfo.noteIds.filter((id) => id !== INVALID_NOTE_ID) : [];
                 if (noteIds.length > 0) {
-                    const viewButton = this._createInlineActionButton('view-note', `View ${cardFormat.name} note`);
-                    viewButton.dataset.action = 'view-note';
-                    viewButton.addEventListener('click', async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        await this._application.api.viewNotes(noteIds, options.anki.noteGuiMode, false);
-                    }, false);
-                    buttonContainer.replaceChildren(viewButton);
+                    buttonContainer.replaceChildren(this._createInlineViewNoteButton(cardFormat, noteIds, options.anki.noteGuiMode));
                 }
             } catch (error) {
                 console.error('[Yomitan][Safari][InlinePopup][Anki] getAnkiNoteInfo failed', error);
@@ -494,6 +495,30 @@ export class PopupInline extends EventDispatcher {
         iconNode.dataset.icon = icon;
         button.appendChild(iconNode);
         return button;
+    }
+
+    /**
+     * @param {import('settings').AnkiCardFormat} cardFormat
+     * @returns {?string}
+     */
+    _getExpressionFieldName(cardFormat) {
+        for (const [fieldName, field] of Object.entries(cardFormat.fields)) {
+            if (typeof field.value === 'string' && field.value.includes('{expression}')) {
+                return fieldName;
+            }
+        }
+        return null;
+    }
+
+    _createInlineViewNoteButton(cardFormat, noteIds, noteGuiMode) {
+        const viewButton = this._createInlineActionButton('view-note', `View added ${cardFormat.name} note`);
+        viewButton.dataset.action = 'view-note';
+        viewButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            await this._application.api.viewNotes(noteIds, noteGuiMode, false);
+        }, false);
+        return viewButton;
     }
 
     _createAnkiContext(displayDetails) {

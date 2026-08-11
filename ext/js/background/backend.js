@@ -28,7 +28,7 @@ import {logErrorLevelToNumber} from '../core/log-utilities.js';
 import {log} from '../core/log.js';
 import {isObjectNotArray} from '../core/object-utilities.js';
 import {clone, deferPromise, promiseTimeout} from '../core/utilities.js';
-import {generateAnkiNoteMediaFileName, INVALID_NOTE_ID, isNoteDataValid} from '../data/anki-util.js';
+import {generateAnkiNoteMediaFileName, isNoteDataValid} from '../data/anki-util.js';
 import {arrayBufferToBase64} from '../data/array-buffer-util.js';
 import {OptionsUtil} from '../data/options-util.js';
 import {getAllPermissions, hasPermissions, hasRequiredPermissionsForOptions} from '../data/permissions-util.js';
@@ -764,40 +764,27 @@ export class Backend {
 
     /** @type {import('api').ApiHandler<'getAnkiNoteInfo'>} */
     async _onApiGetAnkiNoteInfo({notes, fetchAdditionalInfo}) {
-        const canAddArray = await this.partitionAddibleNotes(notes);
+        const previewNotes = notes.map((note) => ({
+            ...note,
+            options: {
+                ...note.options,
+                duplicateScope: /** @type {'deck'} */ ('deck'),
+                duplicateScopeOptions: {
+                    ...note.options.duplicateScopeOptions,
+                    checkAllModels: true,
+                },
+            },
+        }));
+        const matchingNoteIds = await this._anki.findNoteIds(previewNotes);
 
         /** @type {import('anki').NoteInfoWrapper[]} */
         const results = [];
 
-        /** @type {import('anki').Note[]} */
-        const duplicateNotes = [];
-
-        /** @type {number[]} */
-        const originalIndices = [];
-
-        for (let i = 0; i < canAddArray.length; i++) {
-            if (canAddArray[i].isDuplicate) {
-                duplicateNotes.push(canAddArray[i].note);
-                // Keep original indices to locate duplicate inside `duplicateNoteIds`
-                originalIndices.push(i);
-            }
-        }
-
-        const duplicateNoteIds =
-            duplicateNotes.length > 0 ?
-                await this._anki.findNoteIds(duplicateNotes) :
-                [];
-
-        for (let i = 0; i < canAddArray.length; ++i) {
-            const {note, isDuplicate} = canAddArray[i];
-
+        for (let i = 0; i < notes.length; ++i) {
+            const note = notes[i];
             const valid = isNoteDataValid(note);
-
-            if (isDuplicate && duplicateNoteIds[originalIndices.indexOf(i)].length === 0) {
-                duplicateNoteIds[originalIndices.indexOf(i)] = [INVALID_NOTE_ID];
-            }
-
-            const noteIds = isDuplicate ? duplicateNoteIds[originalIndices.indexOf(i)] : null;
+            const matchingIds = matchingNoteIds[i] ?? [];
+            const noteIds = matchingIds.length > 0 ? matchingIds : null;
             const noteInfos = (fetchAdditionalInfo && noteIds !== null && noteIds.length > 0) ? await this._notesCardsInfo(noteIds) : [];
 
             const info = {
