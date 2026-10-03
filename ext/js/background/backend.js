@@ -174,6 +174,7 @@ export class Backend {
             ['injectStylesheet',             this._onApiInjectStylesheet.bind(this)],
             ['getStylesheetContent',         this._onApiGetStylesheetContent.bind(this)],
             ['getEnvironmentInfo',           this._onApiGetEnvironmentInfo.bind(this)],
+            ['textHookerClipboardGet',       this._onApiTextHookerClipboardGet.bind(this)],
             ['clipboardGet',                 this._onApiClipboardGet.bind(this)],
             ['getZoom',                      this._onApiGetZoom.bind(this)],
             ['getSafariInlineScanEnabled',   this._onApiGetSafariInlineScanEnabled.bind(this)],
@@ -908,7 +909,8 @@ export class Backend {
         const frameId = sender.frameId;
         return {
             tabId: typeof tabId === 'number' ? tabId : null,
-            frameId: typeof frameId === 'number' ? frameId : null,
+            frameId: typeof frameId === 'number' ? frameId :
+                (this._isSafariWebExtension() && sender.url === chrome.runtime.getURL('/texthooker.html') ? 0 : null),
         };
     }
 
@@ -930,6 +932,41 @@ export class Backend {
     /** @type {import('api').ApiHandler<'getEnvironmentInfo'>} */
     _onApiGetEnvironmentInfo() {
         return this._environment.getInfo();
+    }
+
+    /** @type {import('api').ApiHandler<'textHookerClipboardGet'>} */
+    async _onApiTextHookerClipboardGet(_params, sender) {
+        if (!this._isSafariWebExtension() || sender.url !== chrome.runtime.getURL('/texthooker.html')) {
+            throw new Error('Clipboard monitoring is only available on the Safari TextHooker page');
+        }
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => { reject(new Error('Clipboard reader timed out')); }, 5000);
+            /** @param {unknown} response */
+            const onResponse = (response) => {
+                clearTimeout(timeout);
+                if (typeof response !== 'object' || response === null || !('text' in response) || typeof response.text !== 'string' || !('changeCount' in response) || typeof response.changeCount !== 'number') {
+                    reject(new Error('Could not read the macOS clipboard'));
+                    return;
+                }
+                resolve({text: response.text, changeCount: response.changeCount});
+            };
+            /** @param {unknown} error */
+            const onError = (error) => {
+                clearTimeout(timeout);
+                reject(error instanceof Error ? error : new Error(`${error}`));
+            };
+            try {
+                const pending = /** @type {unknown} */ (chrome.runtime.sendNativeMessage('dev.yomitan.safari.extension', {action: 'textHookerClipboardRead'}, (response) => {
+                    const error = chrome.runtime.lastError;
+                    if (error) { onError(new Error(error.message)); } else { onResponse(response); }
+                }));
+                if (typeof pending === 'object' && pending !== null && 'then' in pending && typeof pending.then === 'function') {
+                    pending.then(onResponse, onError);
+                }
+            } catch (error) {
+                onError(error);
+            }
+        });
     }
 
     /** @type {import('api').ApiHandler<'clipboardGet'>} */

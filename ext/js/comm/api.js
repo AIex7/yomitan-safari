@@ -258,6 +258,11 @@ export class API {
         return this._invoke('getEnvironmentInfo', void 0);
     }
 
+    /** @returns {Promise<import('api').ApiReturn<'textHookerClipboardGet'>>} */
+    textHookerClipboardGet() {
+        return this._invoke('textHookerClipboardGet', void 0);
+    }
+
     /**
      * @returns {Promise<import('api').ApiReturn<'clipboardGet'>>}
      */

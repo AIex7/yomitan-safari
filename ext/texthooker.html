@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Yomitan TextHooker</title>
+    <link rel="icon" type="image/png" href="/images/icon16.png">
+    <link rel="stylesheet" href="/css/texthooker.css">
+    <script src="/js/pages/text-hooker-main.js" type="module"></script>
+</head>
+<body>
+    <header class="scan-disable">
+        <h1>TextHooker</h1>
+        <label>Keep entries <input id="entry-limit" type="number" min="1" max="5000" value="200" step="1"></label>
+    </header>
+    <main>
+        <div id="entries"></div>
+        <p id="status" role="status">Connecting to clipboard…</p>
+    </main>
+</body>
+</html>

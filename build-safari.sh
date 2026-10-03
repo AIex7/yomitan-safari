@@ -190,6 +190,7 @@ handler_path = extension_root / "SafariWebExtensionHandler.swift"
 app_info_plist_path = project_root / app_name / "Info.plist"
 extension_info_plist_path = extension_root / "Info.plist"
 anki_connect_js_path = extension_root / "Resources" / "js" / "comm" / "anki-connect.js"
+backend_js_path = extension_root / "Resources" / "js" / "background" / "backend.js"
 
 pbxproj = pbxproj_path.read_text(encoding="utf-8")
 
@@ -228,6 +229,7 @@ handler_source = textwrap.dedent(
 
     import Foundation
     import SafariServices
+    import AppKit
     import os.log
 
     class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
@@ -259,6 +261,12 @@ handler_source = textwrap.dedent(
             }
 
             switch action {
+                case "textHookerClipboardRead":
+                    let pasteboard = NSPasteboard.general
+                    complete(context: context, response: [
+                        "text": pasteboard.string(forType: .string) ?? "",
+                        "changeCount": pasteboard.changeCount
+                    ])
                 case "ankiRequest":
                     proxyAnkiRequest(message: message, context: context)
                 default:
@@ -335,6 +343,10 @@ anki_connect_js = re.sub(
     count=1,
 )
 anki_connect_js_path.write_text(anki_connect_js, encoding="utf-8")
+
+backend_js = backend_js_path.read_text(encoding="utf-8")
+backend_js = backend_js.replace("'dev.yomitan.safari.extension', {action: 'textHookerClipboardRead'}", f"'{extension_bundle_identifier}', {{action: 'textHookerClipboardRead'}}")
+backend_js_path.write_text(backend_js, encoding="utf-8")
 
 for info_plist_path in (app_info_plist_path, extension_info_plist_path):
     with info_plist_path.open("rb") as file:

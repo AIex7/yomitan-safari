@@ -37,6 +37,16 @@ In Xcode:
 4. Build and run the app.
 5. If needed, you can run without enabling developer mode by signing both targets and using the signed app directly.
 
+## TextHooker (Safari on macOS)
+
+Open the Yomitan toolbar popup and click **Open TextHooker**. The page automatically reads plain text from the macOS clipboard while it is open; there is no paste button or browser clipboard permission prompt. New clipboard entries appear at the bottom in 26px text, and the page scrolls to the newest entry.
+
+Use **Keep entries** to choose how many entries to retain (1–5,000; default 200). The limit and history are saved locally in Safari extension storage, and the oldest entries are removed when the limit is reached. TextHooker polls every half second; Safari may slow polling in background tabs, so very rapid clipboard changes can be missed.
+
+Hold **Shift** over a word to open its dictionary popup. If you chose **F17** in Settings → Scanning → Safari lookup key, press F17 over a word or selected text instead. Scrolling the page hides the lookup popup.
+
+TextHooker requires the built Safari app’s native clipboard bridge, so rebuild and run the Safari app after updating.
+
 ## Scanning
 
 - On Safari for macOS, hold Shift over a word to look it up beside the word.

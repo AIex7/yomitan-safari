@@ -297,6 +297,10 @@ type ApiSurface = {
         params: void;
         return: Environment.Info;
     };
+    textHookerClipboardGet: {
+        params: void;
+        return: {text: string; changeCount: number};
+    };
     clipboardGet: {
         params: void;
         return: string;

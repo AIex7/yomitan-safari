@@ -52,6 +52,11 @@ class DisplayController {
                 if (label !== null) { label.remove(); }
             }
         }
+        if (this._isSafariBrowser) {
+            const textHooker = document.querySelector('.action-texthooker');
+            if (textHooker instanceof HTMLElement) { textHooker.hidden = false; }
+            this._setupButtonEvents('.action-open-texthooker', null, chrome.runtime.getURL('/texthooker.html'));
+        }
         this._hotkeyUtil.os = os;
 
         this._showExtensionInfo(manifest);
