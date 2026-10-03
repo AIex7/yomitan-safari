@@ -39,6 +39,6 @@ In Xcode:
 
 ## Scanning
 
-- On Safari for macOS, inline auto-scanning is tracked per domain.
-- Tap your modifier to toggle auto scanning. Or, use the toolbar popup toggle to enable or disable inline auto-scanning for the current domain.
+- On Safari for macOS, hold Shift over a word to look it up beside the word.
+- In Settings → Scanning → Safari lookup key, choose F17 to look up the word under the pointer or selected text with a keypress.
 - On Safari for macOS, Live Text in images is supported when you select the text with the mouse.

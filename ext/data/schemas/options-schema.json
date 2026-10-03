@@ -483,6 +483,7 @@
                                 "type": "object",
                                 "required": [
                                     "inputs",
+                                    "safariLookupKey",
                                     "preventMiddleMouse",
                                     "preventBackForward",
                                     "selectText",
@@ -509,6 +510,11 @@
                                     "scanResolution"
                                 ],
                                 "properties": {
+                                    "safariLookupKey": {
+                                        "type": "string",
+                                        "enum": ["Shift", "F17"],
+                                        "default": "Shift"
+                                    },
                                     "inputs": {
                                         "type": "array",
                                         "default": [

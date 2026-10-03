@@ -185,6 +185,7 @@ export type AudioSourceOptions = {
 };
 
 export type ScanningOptions = {
+    safariLookupKey: 'Shift' | 'F17';
     inputs: ScanningInput[];
     preventMiddleMouse: ScanningPreventSecondaryMouseOptions;
     preventBackForward: ScanningPreventSecondaryMouseOptions;

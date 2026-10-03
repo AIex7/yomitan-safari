@@ -46,6 +46,12 @@ class DisplayController {
 
         const {platform: {os}} = await this._api.getEnvironmentInfo();
         this._isSafariBrowser = await this._isSafari();
+        if (this._isSafariBrowser) {
+            for (const toggle of document.querySelectorAll('.enable-search,.enable-search2')) {
+                const label = toggle.closest('.toggle');
+                if (label !== null) { label.remove(); }
+            }
+        }
         this._hotkeyUtil.os = os;
 
         this._showExtensionInfo(manifest);
@@ -89,14 +95,14 @@ class DisplayController {
     // Private
 
     /** */
-    _updateDisplayModifierKey(safariInlineScanEnabled = false) {
+    _updateDisplayModifierKey() {
         const {profiles, profileCurrent} = /** @type {import('settings').Options} */ (this._optionsFull);
         /** @type {NodeListOf<HTMLElement>} */
         const modifierKeyHint = document.querySelectorAll('.tooltip');
 
         if (this._isSafariBrowser) {
             for (let i = 0; i < modifierKeyHint.length; i++) {
-                modifierKeyHint[i].textContent = safariInlineScanEnabled ? 'Scan automatically on this domain' : 'Scanning disabled on this domain';
+                modifierKeyHint[i].textContent = `Look up text with ${profiles[profileCurrent].options.scanning.safariLookupKey}`;
             }
             return;
         }
@@ -240,23 +246,17 @@ class DisplayController {
      */
     async _setupOptions({options}) {
         const extensionEnabled = options.general.enable;
-        const safariInlineScanEnabled = this._isSafariBrowser ? await this._api.getSafariInlineScanEnabledForActiveTab() : false;
-        const onToggleChanged = (e) => {
-            const toggle = /** @type {HTMLInputElement} */ (e.currentTarget);
-            if (this._isSafariBrowser) {
-                void this._api.setSafariInlineScanEnabledForActiveTab(toggle.checked);
-            } else {
-                void this._api.commandExec('toggleTextScanning');
-            }
+        const onToggleChanged = () => {
+            void this._api.commandExec('toggleTextScanning');
         };
         for (const toggle of /** @type {NodeListOf<HTMLInputElement>} */ (document.querySelectorAll('.enable-search,.enable-search2'))) {
-            const checked = this._isSafariBrowser ? safariInlineScanEnabled : extensionEnabled;
+            const checked = extensionEnabled;
             if (toggle.checked !== checked) {
                 toggle.checked = checked;
             }
             toggle.addEventListener('change', onToggleChanged, false);
         }
-        void this._updateDisplayModifierKey(safariInlineScanEnabled);
+        void this._updateDisplayModifierKey();
         void this._updateDictionariesEnabledWarnings(options);
         void this._updatePermissionsWarnings(options);
 

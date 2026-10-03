@@ -429,7 +429,21 @@
         <div class="heading-container-left"><h2 id="scanning"><a href="#scanning">Scanning</a></h2></div>
     </div>
     <div class="settings-group">
-        <div class="settings-item">
+        <div class="settings-item" data-show-for-browser="safari">
+            <div class="settings-item-inner settings-item-inner-wrappable">
+                <div class="settings-item-left">
+                    <div class="settings-item-label">Safari lookup key</div>
+                    <div class="settings-item-description">Hold Shift over a word, or choose F17 and press it over a word or selected text.</div>
+                </div>
+                <div class="settings-item-right">
+                    <select data-setting="scanning.safariLookupKey">
+                        <option value="Shift">Shift</option>
+                        <option value="F17">F17</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="settings-item" data-hide-for-browser="safari">
             <div class="settings-item-inner settings-item-inner-wrappable">
                 <div class="settings-item-left">
                     <div class="settings-item-label">Scan modifier key</div>

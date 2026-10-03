@@ -29,93 +29,6 @@ import {TextSourceGenerator} from '../dom/text-source-generator.js';
 import {TextSourceRange} from '../dom/text-source-range.js';
 import {TextScanner} from '../language/text-scanner.js';
 
-class InlineSelectionTextSource {
-    /**
-     * @param {string} content
-     */
-    constructor(content) {
-        /** @type {string} */
-        this._content = content;
-    }
-
-    /**
-     * @type {'element'}
-     */
-    get type() {
-        return 'element';
-    }
-
-    /**
-     * @returns {string}
-     */
-    text() {
-        return this._content;
-    }
-
-    /**
-     * @param {number} length
-     * @param {boolean} fromEnd
-     * @returns {number}
-     */
-    setEndOffset(length, fromEnd) {
-        const previousLength = this._content.length;
-        if (fromEnd) {
-            this._content = this._content.substring(0, Math.min(previousLength, length));
-        } else {
-            this._content = this._content.substring(0, Math.min(previousLength, length));
-        }
-        return previousLength - this._content.length;
-    }
-
-    /**
-     * @param {number} length
-     * @returns {number}
-     */
-    setStartOffset(length) {
-        const actualLength = Math.min(length, this._content.length);
-        this._content = this._content.substring(actualLength);
-        return actualLength;
-    }
-
-    /**
-     * @returns {DOMRect[]}
-     */
-    getRects() {
-        return [];
-    }
-
-    /**
-     * @returns {import('document-util').NormalizedWritingMode}
-     */
-    getWritingMode() {
-        return 'horizontal-tb';
-    }
-
-    /** */
-    cleanup() {}
-
-    /** */
-    select() {}
-
-    /** */
-    deselect() {}
-
-    /**
-     * @param {import('text-source').TextSource} other
-     * @returns {boolean}
-     */
-    hasSameStart(other) {
-        return typeof other === 'object' && other !== null && other instanceof InlineSelectionTextSource && this._content === other.text();
-    }
-
-    /**
-     * @returns {Node[]}
-     */
-    getNodesInRange() {
-        return document.body !== null ? [document.body] : [];
-    }
-}
-
 /**
  * This is the main class responsible for scanning and handling webpage content.
  */
@@ -200,14 +113,12 @@ export class Frontend {
         this._optionsContextOverride = null;
         /** @type {?HTMLDivElement} */
         this._textIndicatorContainer = null;
+        /** @type {?{x: number, y: number}} */
+        this._safariPointerPosition = null;
         /** @type {boolean} */
-        this._safariInlineScanEnabled = false;
-        /** @type {?import('input').ModifierKey} */
-        this._safariInlineToggleModifierKey = null;
+        this._safariLookupPending = false;
         /** @type {boolean} */
-        this._safariInlineToggleArmed = false;
-        /** @type {boolean} */
-        this._safariInlineToggleInvalid = false;
+        this._safariLookupCancelled = false;
         /* eslint-disable @stylistic/no-multi-spaces */
         /** @type {import('application').ApiMap} */
         this._runtimeApiMap = createApiMap([
@@ -256,7 +167,6 @@ export class Frontend {
      * Prepares the instance for use.
      */
     async prepare() {
-        await this._restoreSafariInlineScanEnabled();
         await this.updateOptions();
         try {
             const {zoomFactor} = await this._application.api.getZoom();
@@ -270,10 +180,7 @@ export class Frontend {
         window.addEventListener('resize', this._onResize.bind(this), false);
         window.addEventListener('scroll', this._onScroll.bind(this), true);
         window.addEventListener('keydown', this._onKeyDown.bind(this), true);
-        window.addEventListener('keyup', this._onKeyUp.bind(this), true);
-        window.addEventListener('focus', this._onWindowFocus.bind(this), false);
-        document.addEventListener('visibilitychange', this._onVisibilityChange.bind(this), false);
-        document.addEventListener('selectionchange', this._onSelectionChange.bind(this), true);
+        window.addEventListener('mousemove', this._onSafariMouseMove.bind(this), true);
         addFullscreenChangeEventListener(this._updatePopup.bind(this));
 
         const {visualViewport} = window;
@@ -526,62 +433,73 @@ export class Frontend {
         void this._updatePopupPosition();
     }
 
-    /** */
-    _onWindowFocus() {
-        void this._syncSafariInlineScanEnabledState();
-    }
-
-    /** */
-    _onVisibilityChange() {
-        if (document.visibilityState !== 'visible') { return; }
-        void this._syncSafariInlineScanEnabledState();
-    }
-
     /**
      * @param {KeyboardEvent} e
      * @returns {void}
      */
     _onKeyDown(e) {
-        if (!this._isSafariInlinePopupMode() || e.repeat) { return; }
-        const toggleModifierKey = this._safariInlineToggleModifierKey;
-        if (toggleModifierKey === null) { return; }
-        if (this._isKeyboardEventForModifierKey(e, toggleModifierKey)) {
-            if (!this._safariInlineToggleArmed) {
-                this._safariInlineToggleArmed = true;
-                this._safariInlineToggleInvalid = false;
+        if (!this._isSafariInlinePopupMode() || e.repeat || this._options === null) { return; }
+        const key = this._options.scanning.safariLookupKey;
+        if (e.key !== key && e.code !== key) { return; }
+        if (key === 'F17') { e.preventDefault(); }
+        void this._lookupSafariText();
+    }
+
+    /**
+     * @param {MouseEvent} e
+     */
+    _onSafariMouseMove(e) {
+        if (!this._isSafariInlinePopupMode()) { return; }
+        this._safariPointerPosition = {x: e.clientX, y: e.clientY};
+        if (this._options !== null && this._options.scanning.safariLookupKey === 'Shift' && e.shiftKey) {
+            void this._lookupSafariText();
+        }
+    }
+
+    /** @returns {Promise<void>} */
+    async _lookupSafariText() {
+        if (this._options === null || !this._options.general.enable || this._disabledOverride || this._safariLookupPending) { return; }
+        this._safariLookupPending = true;
+        this._safariLookupCancelled = false;
+        try {
+            const selection = window.getSelection();
+            if (selection !== null && selection.toString().length > 0) {
+                await this._scanSelectedText(false, true);
+                return;
             }
+            const position = this._safariPointerPosition;
+            if (position === null || (this._popup !== null && await this._popup.containsPoint(position.x, position.y))) { return; }
+            const {scanning, general} = this._options;
+            const source = this._textSourceGenerator.getRangeFromPoint(position.x, position.y, {
+                deepContentScan: scanning.deepDomScan,
+                normalizeCssZoom: scanning.normalizeCssZoom,
+                language: general.language,
+            });
+            if (source === null) { return; }
+            try {
+                await this._textScanner.search(source, {focus: false});
+            } finally {
+                source.cleanup();
+            }
+        } catch (e) {
+            log.error(e);
+        } finally {
+            this._safariLookupPending = false;
+        }
+    }
+
+    /**
+     * @param {Event} e
+     * @returns {void}
+     */
+    _onScroll(e) {
+        if (this._isSafariInlinePopupMode()) {
+            const container = this._popup !== null ? this._popup.container : null;
+            if (container !== null && e.target instanceof Node && container.contains(e.target)) { return; }
+            this._safariLookupCancelled = true;
+            this._clearSelection(true);
             return;
         }
-        if (this._safariInlineToggleArmed) {
-            this._safariInlineToggleInvalid = true;
-        }
-    }
-
-    /**
-     * @param {KeyboardEvent} e
-     * @returns {void}
-     */
-    _onKeyUp(e) {
-        if (!this._isSafariInlinePopupMode()) { return; }
-        const toggleModifierKey = this._safariInlineToggleModifierKey;
-        if (toggleModifierKey === null || !this._isKeyboardEventForModifierKey(e, toggleModifierKey)) { return; }
-        if (this._safariInlineToggleArmed && !this._safariInlineToggleInvalid) {
-            this._safariInlineScanEnabled = !this._safariInlineScanEnabled;
-            void this._persistSafariInlineScanEnabled();
-            this._updateTextScannerEnabled();
-            if (!this._safariInlineScanEnabled) {
-                this._clearSelection(true);
-                this._clearMousePosition();
-            }
-        }
-        this._safariInlineToggleArmed = false;
-        this._safariInlineToggleInvalid = false;
-    }
-
-    /**
-     * @returns {void}
-     */
-    _onScroll() {
         void this._updatePopupPosition();
     }
 
@@ -610,6 +528,11 @@ export class Frontend {
      * @returns {void}
      */
     _onVisualViewportScroll() {
+        if (this._isSafariInlinePopupMode()) {
+            this._safariLookupCancelled = true;
+            this._clearSelection(true);
+            return;
+        }
         void this._updatePopupPosition();
     }
 
@@ -636,6 +559,7 @@ export class Frontend {
      * @param {import('text-scanner').EventArgument<'searchSuccess'>} details
      */
     _onSearchSuccess({type, dictionaryEntries, sentence, inputInfo: {eventType, detail: inputInfoDetail}, textSource, optionsContext, detail, pageTheme}) {
+        if (this._isSafariInlinePopupMode() && this._safariLookupCancelled) { return; }
         this._stopClearSelectionDelayed();
         let focus = (eventType === 'mouseMove');
         if (typeof inputInfoDetail === 'object' && inputInfoDetail !== null) {
@@ -784,15 +708,6 @@ export class Frontend {
         }
     }
 
-    /** */
-    _onSelectionChange() {
-        if (!this._isSafariInlinePopupMode() || !this._safariInlineScanEnabled || !this._textScanner.isEnabled()) { return; }
-
-        const selection = window.getSelection();
-        if (selection === null || selection.toString().length === 0) { return; }
-        void this._searchSelectedTextDirect(selection.toString());
-    }
-
     /**
      * @returns {Promise<void>}
      */
@@ -810,12 +725,9 @@ export class Frontend {
         const preventMiddleMouseOnTextHover = scanningOptions.preventMiddleMouse.onTextHover;
         const preventBackForwardOnPage = this._getPreventSecondaryMouseValueForPageType(scanningOptions.preventBackForward);
         const preventBackForwardOnTextHover = scanningOptions.preventBackForward.onTextHover;
-        this._safariInlineToggleModifierKey = this._getSafariInlineToggleModifierKey(scanningOptions.inputs);
-        this._safariInlineToggleArmed = false;
-        this._safariInlineToggleInvalid = false;
         const scanningInputs = /** @type {import('settings').ScanningInput[]} */ (
             this._isSafariInlinePopupMode() ?
-            this._getSafariInlineScanningInputs(scanningOptions.inputs) :
+            [] :
             scanningOptions.inputs
         );
         this._textScanner.language = options.general.language;
@@ -859,125 +771,10 @@ export class Frontend {
     }
 
     /**
-     * @param {import('settings').ScanningInput[]} inputs
-     * @returns {import('settings').ScanningInput[]}
-     */
-    _getSafariInlineScanningInputs(inputs) {
-        if (!Array.isArray(inputs)) { return inputs; }
-        return inputs.map((input) => {
-            const {types} = input;
-            const isMouseInput = (
-                typeof types === 'object' &&
-                types !== null &&
-                types.mouse === true
-            );
-            if (!isMouseInput) { return input; }
-            return {
-                ...input,
-                include: '',
-                exclude: 'mouse0',
-            };
-        });
-    }
-
-    /**
-     * @param {import('settings').ScanningInput[]} inputs
-     * @returns {?import('input').ModifierKey}
-     */
-    _getSafariInlineToggleModifierKey(inputs) {
-        if (!Array.isArray(inputs)) { return null; }
-        for (const input of inputs) {
-            const {include, exclude, types} = input;
-            const isMouseInput = (
-                typeof types === 'object' &&
-                types !== null &&
-                types.mouse === true
-            );
-            if (!isMouseInput) { continue; }
-            const includeValues = this._splitModifiers(include);
-            const excludeValues = this._splitModifiers(exclude);
-            const keyboardModifiers = includeValues.filter((value) => !this._isMouseModifier(value));
-            if (excludeValues.length === 1 && excludeValues[0] === 'mouse0') {
-                return (keyboardModifiers.length === 0 ? null : /** @type {?import('input').ModifierKey} */ (keyboardModifiers[0]));
-            }
-            if (keyboardModifiers.length > 0) {
-                return /** @type {import('input').ModifierKey} */ (keyboardModifiers[0]);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * @param {string} value
-     * @returns {import('input').Modifier[]}
-     */
-    _splitModifiers(value) {
-        return value.split(/[,;\s]+/).map((v) => v.trim().toLowerCase()).filter((v) => v.length > 0);
-    }
-
-    /**
-     * @param {string} value
-     * @returns {boolean}
-     */
-    _isMouseModifier(value) {
-        return /^mouse\d+$/.test(value);
-    }
-
-    /**
-     * @param {KeyboardEvent} e
-     * @param {import('input').ModifierKey} modifierKey
-     * @returns {boolean}
-     */
-    _isKeyboardEventForModifierKey(e, modifierKey) {
-        switch (modifierKey) {
-            case 'alt':
-                return (e.key === 'Alt' || e.code === 'AltLeft' || e.code === 'AltRight');
-            case 'ctrl':
-                return (e.key === 'Control' || e.code === 'ControlLeft' || e.code === 'ControlRight');
-            case 'meta':
-                return (e.key === 'Meta' || e.code === 'MetaLeft' || e.code === 'MetaRight');
-            case 'shift':
-                return (e.key === 'Shift' || e.code === 'ShiftLeft' || e.code === 'ShiftRight');
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    async _restoreSafariInlineScanEnabled() {
-        if (!this._isSafariInlinePopupMode()) { return; }
-        try {
-            this._safariInlineScanEnabled = await this._application.api.getSafariInlineScanEnabled();
-        } catch (e) {
-            log.error(e);
-        }
-    }
-
-    /**
-     * @returns {Promise<void>}
-     */
-    async _persistSafariInlineScanEnabled() {
-        if (!this._isSafariInlinePopupMode()) { return; }
-        try {
-            await this._application.api.setSafariInlineScanEnabled(this._safariInlineScanEnabled);
-        } catch (e) {
-            log.error(e);
-        }
-    }
-
-    /**
      * @returns {Promise<void>}
      */
     async _syncSafariInlineScanEnabledState() {
-        if (!this._isSafariInlinePopupMode()) { return; }
-        await this._restoreSafariInlineScanEnabled();
         this._updateTextScannerEnabled();
-        if (!this._safariInlineScanEnabled) {
-            this._clearSelection(true);
-            this._clearMousePosition();
-        }
     }
 
     /**
@@ -991,7 +788,7 @@ export class Frontend {
 
         /** @type {Promise<?import('popup').PopupAny>|undefined} */
         let popupPromise;
-        if (usePopupWindow && this._canUseWindowPopup) {
+        if (usePopupWindow && this._canUseWindowPopup && !this._isSafariInlinePopupMode()) {
             popupPromise = this._popupCache.get('window');
             if (typeof popupPromise === 'undefined') {
                 popupPromise = this._getPopupWindow();
@@ -1253,7 +1050,7 @@ export class Frontend {
             this._options !== null &&
             this._options.general.enable &&
             !this._disabledOverride &&
-            (!this._isSafariInlinePopupMode() || this._safariInlineScanEnabled)
+            !this._isSafariInlinePopupMode()
         );
         if (enabled === this._textScanner.isEnabled()) { return; }
         this._textScanner.setEnabled(enabled);
@@ -1500,54 +1297,22 @@ export class Frontend {
      * @returns {Promise<boolean>}
      */
     async _scanSelectedText(allowEmptyRange, disallowExpandSelection, showEmpty = false) {
+        this._safariLookupCancelled = false;
         safePerformance.mark('frontend:scanSelectedText:start');
         const selection = window.getSelection();
         this._textScanner.setCurrentTextSource(null);
         const selectionText = selection !== null ? selection.toString() : '';
         let source;
-        if (this._isSafariInlinePopupMode() && selectionText.length > 0) {
-            source = new InlineSelectionTextSource(selectionText);
-        } else {
-            const range = this._getFirstSelectionRange(allowEmptyRange);
-            if (range === null) { return false; }
-            source = disallowExpandSelection ? TextSourceRange.createLazy(range) : TextSourceRange.create(range);
-            if (selectionText.length > 0) {
-                source.setText(selectionText);
-            }
+        const range = this._getFirstSelectionRange(allowEmptyRange);
+        if (range === null) { return false; }
+        source = disallowExpandSelection ? TextSourceRange.createLazy(range) : TextSourceRange.create(range);
+        if (selectionText.length > 0) {
+            source.setText(selectionText);
         }
         await this._textScanner.search(source, {focus: true, restoreSelection: true}, showEmpty);
         safePerformance.mark('frontend:scanSelectedText:end');
         safePerformance.measure('frontend:scanSelectedText', 'frontend:scanSelectedText:start', 'frontend:scanSelectedText:end');
         return true;
-    }
-
-    /**
-     * @param {string} selectionText
-     * @returns {Promise<void>}
-     */
-    async _searchSelectedTextDirect(selectionText) {
-        if (selectionText.length === 0) { return; }
-
-        const textSource = new InlineSelectionTextSource(selectionText);
-        this._textScanner.setCurrentTextSource(textSource);
-
-        const {optionsContext, detail} = await this._getSearchContext();
-        /** @type {import('dictionary').DictionaryEntry[]} */
-        let dictionaryEntries = (await this._application.api.termsFind(selectionText, {}, optionsContext)).dictionaryEntries;
-        /** @type {'terms'|'kanji'} */
-        let type = 'terms';
-        if (dictionaryEntries.length === 0) {
-            dictionaryEntries = await this._application.api.kanjiFind(selectionText[0], optionsContext);
-            type = 'kanji';
-        }
-        if (dictionaryEntries.length === 0) {
-            this._onSearchEmpty();
-            return;
-        }
-
-        const themeController = new ThemeController(document.documentElement);
-        const pageTheme = themeController.computeSiteTheme();
-        this._showContent(textSource, true, dictionaryEntries, type, null, detail.documentTitle, optionsContext, pageTheme);
     }
 
     /**

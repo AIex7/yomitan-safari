@@ -135,6 +135,7 @@ export class PopupInline extends EventDispatcher {
     }
 
     hide(_changeFocus) {
+        this._renderToken = null;
         this.stopHideDelayed();
         this._visible = false;
         this._container.hidden = true;
@@ -218,9 +219,7 @@ export class PopupInline extends EventDispatcher {
         if (this._renderToken !== renderToken) { return; }
         await this._ensurePositionLoaded();
         if (this._renderToken !== renderToken) { return; }
-        if (!this._visible || !this._frameRect.valid) {
-            this._position(details.sourceRects);
-        }
+        this._position(details.sourceRects);
         this._visible = true;
         this._container.hidden = false;
         this._container.style.display = 'block';
@@ -320,7 +319,7 @@ export class PopupInline extends EventDispatcher {
         }, 180);
     }
 
-    _position(_sourceRects) {
+    _position(sourceRects) {
         const width = Math.min(this._initialWidth, Math.max(160, window.innerWidth - 16));
         const height = Math.min(this._initialHeight, Math.max(120, window.innerHeight - 16));
         this._container.style.width = `${width}px`;
@@ -331,8 +330,14 @@ export class PopupInline extends EventDispatcher {
         const popupRect = this._container.getBoundingClientRect();
         let left;
         let top;
-        if (this._savedPosition !== null) {
-            ({left, top} = this._clampPosition(this._savedPosition.left, this._savedPosition.top));
+        if (sourceRects.length > 0) {
+            const source = this._getBoundingSourceRect(sourceRects);
+            left = source.left + this._horizontalOffset;
+            top = source.bottom + this._verticalOffset;
+            if (top + popupRect.height > window.innerHeight - 8) {
+                top = source.top - popupRect.height - this._verticalOffset;
+            }
+            ({left, top} = this._clampPosition(left, top));
         } else {
             ({left, top} = this._getDefaultPosition(popupRect.width, popupRect.height));
         }
