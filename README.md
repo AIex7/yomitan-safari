@@ -3,7 +3,7 @@
 New update has a texthooker included. 
 <img width="1405" height="986" alt="image" src="https://github.com/user-attachments/assets/42242501-39b4-4757-bcba-0a99e04628b4" />
 
-This extension supports scanning live text in images, the native OCR model for macOS. However, extensions cannot run in local files, so you will need a web based image viewer for local files. See [https://github.com/uAIex/image-viewer](https://github.com/uAIex/image-viewer)
+This extension supports scanning live text in images, the native OCR model for macOS. However, extensions cannot run in local files, so you will need a web based image viewer for local files, now built into the extension under "image viewer". 
 
 
 
