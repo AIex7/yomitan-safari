@@ -910,7 +910,7 @@ export class Backend {
         return {
             tabId: typeof tabId === 'number' ? tabId : null,
             frameId: typeof frameId === 'number' ? frameId :
-                (this._isSafariWebExtension() && sender.url === chrome.runtime.getURL('/texthooker.html') ? 0 : null),
+                (this._isSafariWebExtension() && (sender.url === chrome.runtime.getURL('/texthooker.html') || sender.url === chrome.runtime.getURL('/image-viewer.html')) ? 0 : null),
         };
     }
 

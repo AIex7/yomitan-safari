@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Image Viewer</title>
+    <link rel="icon" type="image/png" href="/images/icon16.png">
+    <link rel="stylesheet" href="/css/image-viewer.css">
+    <script src="/js/pages/image-viewer-main.js" type="module"></script>
+</head>
+<body>
+    <button class="open-button scan-disable" id="open-button" type="button">Open Folder</button>
+    <button class="fit-button scan-disable" id="fit-button" type="button">Fit Screen</button>
+    <input id="folder-input" type="file" webkitdirectory multiple hidden aria-label="Choose Image Folder">
+    <div class="counter scan-disable" id="counter" role="status" aria-label="Current image">0/0</div>
+    <main id="viewer"></main>
+</body>
+</html>

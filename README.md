@@ -47,6 +47,14 @@ Hold **Shift** over a word to open its dictionary popup. If you chose **F17** in
 
 TextHooker requires the built Safari app’s native clipboard bridge, so rebuild and run the Safari app after updating.
 
+## Image viewer (Safari on macOS)
+
+Click **Open image viewer** in the Yomitan toolbar popup, then **Open Folder** to select a local image folder. Images from the selected folder appear vertically in natural filename order; hidden files and subfolders are skipped. Supported extensions are AVIF, BMP, GIF, HEIC, HEIF, JPEG/JPG, PNG, TIFF/TIF, and WebP, subject to Safari’s image decoding support.
+
+Use the arrow keys to move between images. Click **Fit Screen** or press **F** to toggle between fitting each image to the screen and its natural size (limited to the window width). The counter in the top-right corner follows the current image.
+
+Images stay local to the viewer tab. Selecting text in the image viewer automatically opens the dictionary popup, including Safari Live Text selections where available; no Shift key is needed. This automatic selection lookup is limited to the image viewer. Other pages keep their Shift/F17 behavior. Scrolling closes the lookup popup.
+
 ## Scanning
 
 - On Safari for macOS, hold Shift over a word to look it up beside the word.

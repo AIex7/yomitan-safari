@@ -56,6 +56,9 @@ class DisplayController {
             const textHooker = document.querySelector('.action-texthooker');
             if (textHooker instanceof HTMLElement) { textHooker.hidden = false; }
             this._setupButtonEvents('.action-open-texthooker', null, chrome.runtime.getURL('/texthooker.html'));
+            const imageViewer = document.querySelector('.action-image-viewer');
+            if (imageViewer instanceof HTMLElement) { imageViewer.hidden = false; }
+            this._setupButtonEvents('.action-open-image-viewer', null, chrome.runtime.getURL('/image-viewer.html'));
         }
         this._hotkeyUtil.os = os;
 
