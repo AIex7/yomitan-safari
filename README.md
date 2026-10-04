@@ -46,6 +46,8 @@ Open the Yomitan toolbar popup and click **Open TextHooker**. The page automatic
 
 Use **Keep entries** to choose how many entries to retain (1–5,000; default 200). The limit and history are saved locally in Safari extension storage, and the oldest entries are removed when the limit is reached. TextHooker polls every half second; Safari may slow polling in background tabs, so very rapid clipboard changes can be missed.
 
+TextHooker automatically adds hiragana above Japanese kanji using your enabled Yomitan dictionaries, including for saved entries. This runs locally and needs no toggle or additional installation. Unknown words remain unchanged; names and words with multiple readings may receive an incorrect reading. History stores the original clipboard text, and dictionary lookup still works on the text below the furigana.
+
 Hold **Shift** over a word to open its dictionary popup. If you chose **F17** in Settings → Scanning → Safari lookup key, press F17 over a word or selected text instead. Scrolling the page hides the lookup popup.
 
 TextHooker requires the built Safari app’s native clipboard bridge, so rebuild and run the Safari app after updating.
@@ -55,6 +57,8 @@ TextHooker requires the built Safari app’s native clipboard bridge, so rebuild
 Click **Open image viewer** in the Yomitan toolbar popup, then **Open Folder** to select a local image folder. Images from the selected folder appear vertically in natural filename order; hidden files and subfolders are skipped. Supported extensions are AVIF, BMP, GIF, HEIC, HEIF, JPEG/JPG, PNG, TIFF/TIF, and WebP, subject to Safari’s image decoding support.
 
 Use the arrow keys to move between images. Click **Fit Screen** or press **F** to toggle between fitting each image to the screen and its natural size (limited to the window width). The counter in the top-right corner follows the current image.
+
+The viewer reloads image elements after changing size, resizing the window, or changing browser zoom so Safari can refresh Live Text selection. This is a workaround; Safari may still fail to select text at some sizes.
 
 Images stay local to the viewer tab. Selecting text in the image viewer automatically opens the dictionary popup, including Safari Live Text selections where available; no Shift key is needed. This automatic selection lookup is limited to the image viewer. Other pages keep their Shift/F17 behavior. Scrolling closes the lookup popup.
 

@@ -70,6 +70,13 @@ main {
 .clipboard-entry+.clipboard-entry {
     border-top: 1px solid light-dark(#e4e3e0, #34373d);
 }
+.clipboard-entry ruby {
+    ruby-position: over;
+}
+.clipboard-entry rt {
+    font-size: 0.5em;
+    user-select: none;
+}
 #status {
     font-size: 15px;
     opacity: 0.65;

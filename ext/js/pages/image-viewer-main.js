@@ -57,6 +57,8 @@ await Application.main(true, async (application) => {
     let items = [];
     /** @type {string[]} */
     let imageUrls = [];
+    /** @type {File[]} */
+    let imageFiles = [];
     let currentIndex = 0;
     let fitScreen = false;
     const updateCounter = () => { counter.textContent = items.length > 0 ? `${currentIndex + 1}/${items.length}` : '0/0'; };
@@ -90,10 +92,52 @@ await Application.main(true, async (application) => {
         currentIndex = 0;
         updateCounter();
     };
+    /**
+     * @param {File} file
+     * @param {HTMLImageElement|null} previousImage
+     */
+    const createImage = (file, previousImage = null) => {
+        const image = document.createElement('img');
+        const url = URL.createObjectURL(file);
+        imageUrls.push(url);
+        // Reserve the image's aspect ratio while the replacement loads.
+        if (previousImage !== null && previousImage.naturalWidth > 0) {
+            image.width = previousImage.naturalWidth;
+            image.height = previousImage.naturalHeight;
+        }
+        image.alt = imageTitle(file.name);
+        image.title = imageTitle(file.name);
+        image.addEventListener('error', () => {
+            const message = document.createElement('p');
+            message.className = 'image-error';
+            message.textContent = `Safari could not display ${file.name}.`;
+            image.replaceWith(message);
+        }, {once: true});
+        image.src = url;
+        return image;
+    };
+    const refreshLiveText = () => {
+        if (items.length === 0) { return; }
+        const index = nearestIndex();
+        frontend.popup?.hide(false);
+        window.getSelection()?.removeAllRanges();
+        const previousUrls = imageUrls;
+        imageUrls = [];
+        for (const [itemIndex, item] of items.entries()) {
+            const wrap = item.querySelector('.image-wrap');
+            if (wrap === null) { continue; }
+            // A fresh element and URL give Safari a chance to rebuild Live Text
+            // at the new display size instead of reusing its previous overlay.
+            wrap.replaceChildren(createImage(imageFiles[itemIndex], wrap.querySelector('img')));
+        }
+        for (const url of previousUrls) { URL.revokeObjectURL(url); }
+        scrollToIndex(index);
+    };
     /** @param {File[]} files */
     const render = (files) => {
         frontend.popup?.hide(false);
         releaseImages();
+        imageFiles = files;
         if (files.length === 0) { showEmpty('No supported images found in this folder.'); return; }
         const fragment = document.createDocumentFragment();
         items = files.map((file, index) => {
@@ -102,18 +146,7 @@ await Application.main(true, async (application) => {
             section.id = `item-${index}`;
             const wrap = document.createElement('div');
             wrap.className = 'image-wrap';
-            const image = document.createElement('img');
-            const url = URL.createObjectURL(file);
-            imageUrls.push(url);
-            image.src = url;
-            image.alt = imageTitle(file.name);
-            image.title = imageTitle(file.name);
-            image.addEventListener('error', () => {
-                const message = document.createElement('p');
-                message.className = 'image-error';
-                message.textContent = `Safari could not display ${file.name}.`;
-                image.replaceWith(message);
-            }, {once: true});
+            const image = createImage(file);
             wrap.appendChild(image);
             section.appendChild(wrap);
             fragment.appendChild(section);
@@ -129,6 +162,7 @@ await Application.main(true, async (application) => {
         fitScreen = !fitScreen;
         document.body.classList.toggle('fit-screen', fitScreen);
         fitButton.textContent = fitScreen ? 'Natural Size' : 'Fit Screen';
+        refreshLiveText();
         scrollToIndex(index);
     };
     openButton.addEventListener('click', () => {
@@ -154,6 +188,20 @@ await Application.main(true, async (application) => {
         }
     });
     window.addEventListener('scroll', () => { currentIndex = nearestIndex(); updateCounter(); }, {passive: true});
-    window.addEventListener('pagehide', (event) => { if (!event.persisted) { releaseImages(); } });
+    /** @type {ReturnType<typeof setTimeout>|null} */
+    let resizeTimer = null;
+    const onResize = () => {
+        if (resizeTimer !== null) { clearTimeout(resizeTimer); }
+        resizeTimer = setTimeout(() => {
+            resizeTimer = null;
+            refreshLiveText();
+        }, 250);
+    };
+    window.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    window.addEventListener('pagehide', (event) => {
+        if (resizeTimer !== null) { clearTimeout(resizeTimer); resizeTimer = null; }
+        if (!event.persisted) { releaseImages(); }
+    });
     showEmpty('Click Open Folder');
 });
