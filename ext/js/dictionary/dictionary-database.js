@@ -82,8 +82,9 @@ export class DictionaryDatabase {
      * do upgrades for the IndexedDB schema (basically limited to adding new stores when needed)
      */
     async prepare() {
-        // do not do upgrades in web workers as they are considered to be children of the main thread and are not responsible for database upgrades
+        // Child workers do not upgrade the database; the main service worker must do so for Safari.
         const isWorker = self.constructor.name !== 'Window';
+        const isServiceWorker = self.constructor.name === 'ServiceWorkerGlobalScope';
         const upgrade =
             /** @type {import('database').StructureDefinition<import('dictionary-database').ObjectStoreName>[]?} */
             ([
@@ -157,7 +158,7 @@ export class DictionaryDatabase {
         await this._db.open(
             this._dbName,
             60,
-            isWorker ? null : upgrade,
+            isWorker && !isServiceWorker ? null : upgrade,
         );
 
         // when we are not a worker ourselves, create a worker which is basically just a wrapper around this class, which we can use to offload some functions to
