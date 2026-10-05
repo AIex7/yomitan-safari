@@ -3,7 +3,7 @@ set -eu
 
 usage() {
     cat <<'EOF'
-Usage: ./build-safari.sh [--version VERSION] [--app-name NAME] [--bundle-identifier ID] [--project-location PATH]
+Usage: ./build-safari.sh [--version VERSION] [--app-name NAME] [--bundle-identifier ID] [--project-location PATH] [--development-team TEAM_ID]
 
 Builds a Safari-ready WebExtension bundle in ./builds/yomitan-safari-web-extension and
 generates a macOS Safari app-extension Xcode project with `xcrun safari-web-extension-converter`.
@@ -16,6 +16,7 @@ APP_NAME="Yomitan Safari"
 BUNDLE_IDENTIFIER="dev.yomitan.safari"
 PROJECT_LOCATION="$ROOT_DIR/builds/yomitan-safari-app"
 WEB_EXTENSION_DIR="$ROOT_DIR/builds/yomitan-safari-web-extension"
+DEVELOPMENT_TEAM=""
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -33,6 +34,10 @@ while [ "$#" -gt 0 ]; do
             ;;
         --project-location)
             PROJECT_LOCATION="$2"
+            shift 2
+            ;;
+        --development-team)
+            DEVELOPMENT_TEAM="$2"
             shift 2
             ;;
         --help|-h)
@@ -147,6 +152,8 @@ if output_dir.exists():
 shutil.copytree(root_dir / "ext", output_dir)
 
 for relative_path in exclude_files:
+    if relative_path == manifest.get("background", {}).get("service_worker"):
+        continue
     target = output_dir / relative_path
     if target.is_dir():
         shutil.rmtree(target)
@@ -156,7 +163,10 @@ for relative_path in exclude_files:
 manifest_text = json.dumps(manifest, indent=4) + "\n"
 manifest_text = manifest_text.replace("$YOMITAN_VERSION", version)
 (output_dir / "manifest.json").write_text(manifest_text, encoding="utf-8")
+
 PY
+
+node "$ROOT_DIR/dev/bin/build-safari-scripts.js" "$WEB_EXTENSION_DIR"
 
 xcrun safari-web-extension-converter \
     "$WEB_EXTENSION_DIR" \
@@ -170,7 +180,7 @@ xcrun safari-web-extension-converter \
     --no-prompt \
     --force
 
-python3 - "$PROJECT_LOCATION" "$APP_NAME" "$BUNDLE_IDENTIFIER" <<'PY'
+python3 - "$PROJECT_LOCATION" "$APP_NAME" "$BUNDLE_IDENTIFIER" "$DEVELOPMENT_TEAM" <<'PY'
 import plistlib
 import re
 import sys
@@ -180,6 +190,7 @@ from pathlib import Path
 project_location = Path(sys.argv[1])
 app_name = sys.argv[2]
 bundle_identifier = sys.argv[3]
+development_team = sys.argv[4]
 extension_bundle_identifier = f"{bundle_identifier}.extension"
 
 project_root = project_location / app_name
@@ -204,6 +215,14 @@ def replace_bundle_identifier(match):
 
 
 pbxproj = re.sub(r"PRODUCT_BUNDLE_IDENTIFIER = [^;]+;", replace_bundle_identifier, pbxproj)
+if development_team:
+    if not re.fullmatch(r"[A-Z0-9]{10}", development_team):
+        raise ValueError("Development team must be a 10-character Apple Team ID")
+    pbxproj = re.sub(
+        r"(\s*)CODE_SIGN_STYLE = Automatic;",
+        lambda match: f"{match.group(1)}CODE_SIGN_STYLE = Automatic;{match.group(1)}DEVELOPMENT_TEAM = {development_team};",
+        pbxproj,
+    )
 pbxproj = re.sub(
     r"(ENABLE_HARDENED_RUNTIME = YES;\n(\s+)ENABLE_USER_SELECTED_FILES = readonly;)",
     r"ENABLE_HARDENED_RUNTIME = YES;\n\2ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;\n\1",

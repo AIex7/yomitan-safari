@@ -1,0 +1,28 @@
+/* Keep Safari's toolbar popover compact if its WebView reports hover: none. */
+:root.safari-action-popup body {
+    box-sizing: border-box;
+    min-width: 0;
+    width: 240px;
+    max-width: 240px;
+    height: auto;
+    font-size: var(--font-size);
+    text-align: center;
+}
+
+:root.safari-action-popup .toggle {
+    display: none;
+}
+
+:root.safari-action-popup .toggle-on,
+:root.safari-action-popup .toggle-off,
+:root.safari-action-popup select.profile-select {
+    font-size: var(--font-size);
+}
+
+:root.safari-action-popup body:not([data-loaded=true]) #action-popup {
+    display: none;
+}
+
+:root.safari-action-popup body[data-loaded=true] #action-popup {
+    display: flex;
+}

@@ -384,6 +384,7 @@ class DisplayController {
 
     /** @returns {Promise<boolean>} */
     async _isSafari() {
+        if (document.documentElement.classList.contains('safari-action-popup')) { return true; }
         const {browser} = await this._api.getEnvironmentInfo();
         return browser === 'safari';
     }

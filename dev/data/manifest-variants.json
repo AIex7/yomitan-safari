@@ -351,6 +351,32 @@
             "fileName": "yomitan-safari-web-extension",
             "modifications": [
                 {
+                    "action": "delete",
+                    "path": [
+                        "background",
+                        "page"
+                    ]
+                },
+                {
+                    "action": "set",
+                    "path": [
+                        "background",
+                        "service_worker"
+                    ],
+                    "value": "sw-safari.js"
+                },
+                {
+                    "action": "set",
+                    "path": [
+                        "content_scripts",
+                        0,
+                        "js"
+                    ],
+                    "value": [
+                        "js/app/content-script-safari.js"
+                    ]
+                },
+                {
                     "action": "remove",
                     "path": [
                         "optional_permissions"
