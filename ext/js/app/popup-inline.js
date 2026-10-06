@@ -414,23 +414,27 @@ export class PopupInline extends EventDispatcher {
         for (const [cardFormatIndex, cardFormat] of cardFormats.entries()) {
             if (!cardFormat.deck || !cardFormat.model) { continue; }
 
+            /** @type {import('anki-note-builder').CreateNoteDetails} */
+            const noteDetails = {
+                dictionaryEntry,
+                cardFormat,
+                context,
+                template,
+                tags: options.anki.tags,
+                duplicateScope: options.anki.duplicateScope,
+                duplicateScopeCheckAllModels: options.anki.duplicateScopeCheckAllModels,
+                resultOutputMode: options.general.resultOutputMode,
+                glossaryLayoutMode: options.general.glossaryLayoutMode,
+                compactTags: options.general.compactTags,
+                mediaOptions: null,
+                requirements: [],
+                dictionaryStylesMap,
+            };
+            const optionsContext = this._optionsContext;
             let note;
+            let requirements;
             try {
-                ({note} = await this._ankiNoteBuilder.createNote({
-                    dictionaryEntry,
-                    cardFormat,
-                    context,
-                    template,
-                    tags: options.anki.tags,
-                    duplicateScope: options.anki.duplicateScope,
-                    duplicateScopeCheckAllModels: options.anki.duplicateScopeCheckAllModels,
-                    resultOutputMode: options.general.resultOutputMode,
-                    glossaryLayoutMode: options.general.glossaryLayoutMode,
-                    compactTags: options.general.compactTags,
-                    mediaOptions: null,
-                    requirements: [],
-                    dictionaryStylesMap,
-                }));
+                ({note, requirements} = await this._ankiNoteBuilder.createNote(noteDetails));
             } catch (e) {
                 console.error('[Yomitan][Safari][InlinePopup][Anki] Failed to build note', e);
                 continue;
@@ -447,7 +451,30 @@ export class PopupInline extends EventDispatcher {
                 e.stopPropagation();
                 saveButton.disabled = true;
                 try {
-                    const noteId = await this._application.api.addAnkiNote(note);
+                    let noteToSave = note;
+                    const furiganaRequirements = requirements.filter(({type}) => type === 'textFurigana');
+                    if (furiganaRequirements.length > 0) {
+                        if (optionsContext === null) { throw new Error('Options context not initialized'); }
+                        const result = await this._ankiNoteBuilder.createNote({
+                            ...noteDetails,
+                            requirements: furiganaRequirements,
+                            mediaOptions: {
+                                audio: null,
+                                screenshot: {
+                                    format: options.anki.screenshot.format,
+                                    quality: options.anki.screenshot.quality,
+                                    contentOrigin: {tabId: this._application.tabId, frameId: this._frameId},
+                                },
+                                textParsing: {optionsContext, scanLength: options.scanning.length},
+                            },
+                        });
+                        if (result.errors.length > 0) { throw result.errors[0]; }
+                        if (result.requirements.some(({type}) => type === 'textFurigana')) {
+                            throw new Error('Sentence furigana could not be generated');
+                        }
+                        noteToSave = result.note;
+                    }
+                    const noteId = await this._application.api.addAnkiNote(noteToSave);
                     console.log('[Yomitan][Safari][InlinePopup][Anki] addAnkiNote', {noteId, cardFormat: cardFormat.name});
                     if (typeof noteId === 'number' && noteId > 0) {
                         const viewButton = this._createInlineActionButton('view-note', `View ${cardFormat.name} note`);
