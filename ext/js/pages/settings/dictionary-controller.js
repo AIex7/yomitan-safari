@@ -20,7 +20,7 @@ import * as ajvSchemas0 from '../../../lib/validate-schemas.js';
 import {EventListenerCollection} from '../../core/event-listener-collection.js';
 import {readResponseJson} from '../../core/json.js';
 import {log} from '../../core/log.js';
-import {deferPromise} from '../../core/utilities.js';
+import {clone, deepEqual, deferPromise} from '../../core/utilities.js';
 import {compareRevisions} from '../../dictionary/dictionary-data-util.js';
 import {DictionaryWorker} from '../../dictionary/dictionary-worker.js';
 import {querySelectorNotNull} from '../../dom/query-selector.js';
@@ -600,6 +600,8 @@ export class DictionaryController {
         this._dictionaries = null;
         /** @type {DictionaryEntry[]} */
         this._dictionaryEntries = [];
+        /** @type {import('settings').ProfileOptions['dictionaries'] | null} */
+        this._dictionarySettings = null;
         /** @type {?import('core').TokenObject} */
         this._databaseStateToken = null;
         /** @type {boolean} */
@@ -885,6 +887,8 @@ export class DictionaryController {
      */
     _onOptionsChanged({options}) {
         this._updateDictionariesEnabledWarnings(options);
+        if (deepEqual(this._dictionarySettings, options.dictionaries)) { return; }
+        this._dictionarySettings = clone(options.dictionaries);
         if (this._dictionaries !== null) {
             void this._updateEntries();
         }
@@ -942,6 +946,7 @@ export class DictionaryController {
         await DictionaryController.ensureDictionarySettings(this._settingsController, dictionaries, void 0, true, false);
 
         const options = await this._settingsController.getOptions();
+        this._dictionarySettings = clone(options.dictionaries);
         this._updateDictionariesEnabledWarnings(options);
 
         /** @type {Map<string, import('dictionary-importer').Summary>} */
