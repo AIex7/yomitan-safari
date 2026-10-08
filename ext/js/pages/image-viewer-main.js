@@ -75,6 +75,15 @@ await Application.main(true, async (application) => {
         }
         return bestIndex;
     };
+    const getReadingPosition = () => {
+        const index = items.findIndex((item) => item.getBoundingClientRect().bottom > 0);
+        const itemIndex = index < 0 ? Math.max(0, items.length - 1) : index;
+        return {
+            index: itemIndex,
+            offset: items.length > 0 ? -items[itemIndex].getBoundingClientRect().top : 0,
+            left: window.scrollX,
+        };
+    };
     /** @param {number} index */
     const scrollToIndex = (index) => {
         if (items.length === 0) { return; }
@@ -116,9 +125,8 @@ await Application.main(true, async (application) => {
         image.src = url;
         return image;
     };
-    const refreshLiveText = () => {
+    const refreshLiveText = (position = getReadingPosition()) => {
         if (items.length === 0) { return; }
-        const index = nearestIndex();
         frontend.popup?.hide(false);
         window.getSelection()?.removeAllRanges();
         const previousUrls = imageUrls;
@@ -131,7 +139,16 @@ await Application.main(true, async (application) => {
             wrap.replaceChildren(createImage(imageFiles[itemIndex], wrap.querySelector('img')));
         }
         for (const url of previousUrls) { URL.revokeObjectURL(url); }
-        scrollToIndex(index);
+        const item = items[position.index];
+        if (typeof item !== 'undefined') {
+            window.scrollTo({
+                left: position.left,
+                top: window.scrollY + item.getBoundingClientRect().top + position.offset,
+                behavior: 'instant',
+            });
+            currentIndex = position.index;
+            updateCounter();
+        }
     };
     /** @param {File[]} files */
     const render = (files) => {
@@ -158,12 +175,11 @@ await Application.main(true, async (application) => {
         scrollToIndex(0);
     };
     const toggleFitScreen = () => {
-        const index = nearestIndex();
+        const position = getReadingPosition();
         fitScreen = !fitScreen;
         document.body.classList.toggle('fit-screen', fitScreen);
         fitButton.textContent = fitScreen ? 'Natural Size' : 'Fit Screen';
-        refreshLiveText();
-        scrollToIndex(index);
+        refreshLiveText(position);
     };
     openButton.addEventListener('click', () => {
         folderInput.value = '';
@@ -190,15 +206,31 @@ await Application.main(true, async (application) => {
     window.addEventListener('scroll', () => { currentIndex = nearestIndex(); updateCounter(); }, {passive: true});
     /** @type {ReturnType<typeof setTimeout>|null} */
     let resizeTimer = null;
+    const getDisplaySize = () => JSON.stringify({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        viewportWidth: window.visualViewport?.width,
+        viewportHeight: window.visualViewport?.height,
+        scale: window.visualViewport?.scale,
+        pixelRatio: window.devicePixelRatio,
+    });
+    let displaySize = getDisplaySize();
     const onResize = () => {
         if (resizeTimer !== null) { clearTimeout(resizeTimer); }
         resizeTimer = setTimeout(() => {
             resizeTimer = null;
+            if (document.hidden || window.innerWidth <= 0 || window.innerHeight <= 0) { return; }
+            const size = getDisplaySize();
+            if (size === displaySize) { return; }
+            displaySize = size;
             refreshLiveText();
         }, 250);
     };
     window.addEventListener('resize', onResize);
     window.visualViewport?.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) { onResize(); }
+    });
     window.addEventListener('pagehide', (event) => {
         if (resizeTimer !== null) { clearTimeout(resizeTimer); resizeTimer = null; }
         if (!event.persisted) { releaseImages(); }

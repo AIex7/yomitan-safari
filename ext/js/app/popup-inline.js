@@ -215,7 +215,7 @@ export class PopupInline extends EventDispatcher {
         this.prepare();
         const renderToken = {};
         this._renderToken = renderToken;
-        await this._render(displayDetails, renderToken);
+        const ankiEntries = await this._render(displayDetails, renderToken);
         if (this._renderToken !== renderToken) { return; }
         await this._ensurePositionLoaded();
         if (this._renderToken !== renderToken) { return; }
@@ -224,6 +224,9 @@ export class PopupInline extends EventDispatcher {
         this._container.hidden = false;
         this._container.style.display = 'block';
         this._container.style.opacity = '1';
+        if (displayDetails !== null && typeof ankiEntries !== 'undefined') {
+            void this._prepareAnkiActions(ankiEntries, displayDetails, renderToken);
+        }
     }
 
     async setCustomCss(_css) {}
@@ -382,24 +385,37 @@ export class PopupInline extends EventDispatcher {
         displayContentManager.unloadAll();
         const dictionaryInfo = await this._getDictionaryInfo();
         if (this._renderToken !== renderToken) { return; }
+        const ankiEntries = [];
         for (const entry of dictionaryEntries.slice(0, 8)) {
             const node = (
                 entry.type === 'kanji' ?
                 displayGenerator.createKanjiEntry(entry, dictionaryInfo) :
                 displayGenerator.createTermEntry(entry, dictionaryInfo)
             );
-            await this._addAnkiActions(entry, node, displayDetails);
-            if (this._renderToken !== renderToken) { return; }
+            ankiEntries.push({entry, node});
             fragment.appendChild(node);
         }
         if (this._renderToken !== renderToken) { return; }
         contentRoot.replaceChildren(fragment);
         await displayContentManager.executeMediaRequests();
+        return ankiEntries;
     }
 
-    async _addAnkiActions(dictionaryEntry, node, displayDetails) {
+    async _prepareAnkiActions(entries, displayDetails, renderToken) {
+        for (const {entry, node} of entries) {
+            if (this._renderToken !== renderToken) { return; }
+            try {
+                await this._addAnkiActions(entry, node, displayDetails, renderToken);
+            } catch (error) {
+                console.error('[Yomitan][Safari][InlinePopup][Anki] Failed to prepare actions', error);
+            }
+        }
+    }
+
+    async _addAnkiActions(dictionaryEntry, node, displayDetails, renderToken) {
         const options = this._options;
         if (options === null || !options.anki.enable) { return; }
+        const optionsContext = this._optionsContext;
 
         const noteActionsContainer = node.querySelector('.note-actions-container');
         if (!(noteActionsContainer instanceof HTMLElement)) { return; }
@@ -408,6 +424,7 @@ export class PopupInline extends EventDispatcher {
         if (cardFormats.length === 0) { return; }
 
         const template = await this._getAnkiFieldTemplates(options);
+        if (this._renderToken !== renderToken) { return; }
         const context = this._createAnkiContext(displayDetails);
         const dictionaryStylesMap = this._ankiNoteBuilder.getDictionaryStylesMap(options.dictionaries);
 
@@ -430,7 +447,6 @@ export class PopupInline extends EventDispatcher {
                 requirements: [],
                 dictionaryStylesMap,
             };
-            const optionsContext = this._optionsContext;
             let note;
             let requirements;
             try {
@@ -439,6 +455,7 @@ export class PopupInline extends EventDispatcher {
                 console.error('[Yomitan][Safari][InlinePopup][Anki] Failed to build note', e);
                 continue;
             }
+            if (this._renderToken !== renderToken) { return; }
 
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'action-button-container';
@@ -505,6 +522,7 @@ export class PopupInline extends EventDispatcher {
                     note
                 );
                 const [noteInfo] = await this._application.api.getAnkiNoteInfo([previewNote], false);
+                if (this._renderToken !== renderToken) { return; }
                 const noteIds = Array.isArray(noteInfo?.noteIds) ? noteInfo.noteIds.filter((id) => id !== INVALID_NOTE_ID) : [];
                 if (noteIds.length > 0) {
                     buttonContainer.replaceChildren(this._createInlineViewNoteButton(cardFormat, noteIds, options.anki.noteGuiMode));
@@ -513,6 +531,7 @@ export class PopupInline extends EventDispatcher {
                 console.error('[Yomitan][Safari][InlinePopup][Anki] getAnkiNoteInfo failed', error);
             }
 
+            if (this._renderToken !== renderToken) { return; }
             noteActionsContainer.appendChild(buttonContainer);
         }
     }
