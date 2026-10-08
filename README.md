@@ -1,9 +1,33 @@
 # Yomitan
 
-New update has a texthooker included. 
-<img width="1405" height="986" alt="image" src="https://github.com/user-attachments/assets/42242501-39b4-4757-bcba-0a99e04628b4" />
 
-This extension supports scanning live text in images, the native OCR model for macOS. However, extensions cannot run in local files, so you will need a web based image viewer for local files, now built into the extension under "image viewer". 
+## Features
+
+This extension adds two features to the original Yomitan:
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/user-attachments/assets/42242501-39b4-4757-bcba-0a99e04628b4" width="100%" alt="Multi-line Texthooker" />
+      <br />
+      <b>Multi-line Texthooker</b>
+    </td>
+    <td width="50%" align="center">
+      <img src="https://github.com/user-attachments/assets/197403b8-2d22-4ef6-83e2-3296c7a7cf58" width="100%" alt="Image Viewer with OCR" />
+      <br />
+      <b>Image Viewer with Live OCR</b>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      A separate texthooker that supports displaying multiple lines of text with furigana.
+    </td>
+    <td valign="top">
+      An image viewer that supports live text scanning using macOS's native OCR model.
+    </td>
+  </tr>
+</table>
+
 
 
 
