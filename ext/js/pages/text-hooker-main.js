@@ -39,8 +39,17 @@ await Application.main(true, async (application) => {
             if (error) { reject(new Error(error.message)); } else { resolve(result[storageKey]); }
         });
     });
-    const history = new TextHookerHistory(typeof saved === 'object' && saved !== null ? saved : {});
+    // Only the entry limit is restored. Clipboard history belongs to this page.
+    const history = new TextHookerHistory({limit: typeof saved === 'object' && saved !== null ? saved.limit : undefined});
     limitInput.value = `${history.limit}`;
+    const saveLimit = () => new Promise((resolve, reject) => {
+        chrome.storage.local.set({[storageKey]: {limit: history.limit}}, () => {
+            const error = chrome.runtime.lastError;
+            if (error) { reject(new Error(error.message)); } else { resolve(undefined); }
+        });
+    });
+    // Replace older saved history with settings only on the first load.
+    await saveLimit();
 
     const hotkeyHandler = new HotkeyHandler();
     hotkeyHandler.prepare(application.crossFrame);
@@ -134,12 +143,6 @@ await Application.main(true, async (application) => {
         entries.replaceChildren(fragment);
         window.scrollTo({top: document.documentElement.scrollHeight, behavior: 'auto'});
     };
-    const save = () => new Promise((resolve, reject) => {
-        chrome.storage.local.set({[storageKey]: history.snapshot()}, () => {
-            const error = chrome.runtime.lastError;
-            if (error) { reject(new Error(error.message)); } else { resolve(undefined); }
-        });
-    });
     render();
     application.on('optionsUpdated', () => {
         readings.clear();
@@ -150,7 +153,6 @@ await Application.main(true, async (application) => {
         history.clear();
         render();
         status.textContent = 'Waiting for clipboard text…';
-        void save().catch(() => { status.textContent = 'Could not save the cleared session.'; });
     });
     limitInput.addEventListener('change', () => {
         if (!history.setLimit(Number(limitInput.value))) {
@@ -158,7 +160,7 @@ await Application.main(true, async (application) => {
             return;
         }
         render();
-        void save().catch(() => { status.textContent = 'Could not save the entry limit.'; });
+        void saveLimit().catch(() => { status.textContent = 'Could not save the entry limit.'; });
     });
 
     /** @type {ReturnType<typeof setTimeout>|null} */
@@ -169,9 +171,7 @@ await Application.main(true, async (application) => {
         try {
             const clipboard = await application.api.textHookerClipboardGet();
             if (!active) { return; }
-            const previousChangeCount = history.lastChangeCount;
             if (history.append(clipboard)) { render(); }
-            if (history.lastChangeCount !== previousChangeCount) { await save(); }
             status.textContent = history.entries.length === 0 ? 'Waiting for clipboard text…' : '';
         } catch (error) {
             if (!active) { return; }
