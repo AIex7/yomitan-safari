@@ -45,6 +45,19 @@ export class API {
     }
 
     /**
+     * @param {import('anki').Note[]} notes
+     * @returns {Promise<boolean[]>}
+     */
+    morphmanGetKnownWords(notes) {
+        return this._invoke('morphmanGetKnownWords', {notes});
+    }
+
+    /** @param {import('api').MorphmanResults} results */
+    morphmanOpenResults(results) {
+        return this._invoke('morphmanOpenResults', {results});
+    }
+
+    /**
      * @returns {Promise<import('api').ApiReturn<'optionsGetFull'>>}
      */
     optionsGetFull() {

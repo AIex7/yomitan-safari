@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Morphman results — Yomitan</title>
+    <link rel="stylesheet" href="/css/morphman-results.css">
+    <script type="module" src="/js/pages/morphman-results-main.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Morphman results</h1>
+        <p id="source"></p>
+        <div class="actions">
+            <label>Card format <select id="format"></select></label>
+            <button id="add" type="button" disabled>Add selected to Anki</button>
+        </div>
+        <p id="status" role="status" aria-live="polite">Loading…</p>
+    </header>
+    <p class="selection-help">Click to select · Shift-click to select a range · ⌘-click to select individual rows · ⌘A to select all</p>
+    <main>
+        <table role="grid" aria-label="Missing Japanese words" aria-multiselectable="true">
+            <thead><tr><th aria-sort="none"><button type="button" data-sort="word">Word</button></th><th aria-sort="none"><button type="button" data-sort="reading">Reading</button></th><th aria-sort="none"><button type="button" data-sort="frequency">Frequencies</button></th><th aria-sort="none"><button type="button" data-sort="sentence">Sentence</button></th><th aria-sort="none"><button type="button" data-sort="result">Result</button></th></tr></thead>
+            <tbody id="rows"></tbody>
+        </table>
+    </main>
+</body>
+</html>

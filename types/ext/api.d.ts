@@ -51,6 +51,23 @@ export type FindTermsDetails = {
     primaryReading?: string;
 };
 
+export type MorphmanResults = {
+    options: Settings.ProfileOptions;
+    optionsContext: Settings.OptionsContext;
+    rows: {
+        text: string;
+        term: string;
+        reading: string;
+        context: {
+            url: string;
+            documentTitle: string;
+            query: string;
+            fullQuery: string;
+            sentence: {text: string; offset: number};
+        };
+    }[];
+};
+
 export type ParseTextResultItem = {
     id: string;
     source: 'scanning-parser' | 'mecab';
@@ -214,6 +231,14 @@ type ApiSurface = {
             fetchAdditionalInfo: boolean;
         };
         return: Anki.NoteInfoWrapper[];
+    };
+    morphmanGetKnownWords: {
+        params: {notes: Anki.Note[]};
+        return: boolean[];
+    };
+    morphmanOpenResults: {
+        params: {results: MorphmanResults};
+        return: null;
     };
     injectAnkiNoteMedia: {
         params: {

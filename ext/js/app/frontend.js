@@ -28,6 +28,7 @@ import {TextSourceElement} from '../dom/text-source-element.js';
 import {TextSourceGenerator} from '../dom/text-source-generator.js';
 import {TextSourceRange} from '../dom/text-source-range.js';
 import {TextScanner} from '../language/text-scanner.js';
+import {MorphmanController, WORD_HIGHLIGHT_COLOR} from './morphman-controller.js';
 
 /**
  * This is the main class responsible for scanning and handling webpage content.
@@ -167,6 +168,10 @@ export class Frontend {
      * Prepares the instance for use.
      */
     async prepare() {
+        if (chrome.runtime.getURL('/').startsWith('safari-web-extension://')) {
+            const morphmanController = new MorphmanController(this._application);
+            morphmanController.prepare();
+        }
         await this.updateOptions();
         try {
             const {zoomFactor} = await this._application.api.getZoom();
@@ -1116,38 +1121,23 @@ export class Frontend {
         const container = this._getTextIndicatorContainer();
         container.replaceChildren();
 
-        const writingMode = textSource.getWritingMode();
-        const vertical = writingMode === 'vertical-rl' || writingMode === 'vertical-lr';
-
         for (const {left, top, right, bottom} of rects) {
-            const inlineSize = vertical ? Math.max(0, bottom - top) : Math.max(0, right - left);
-            if (inlineSize <= 0) { continue; }
+            const width = Math.max(0, right - left);
+            const height = Math.max(0, bottom - top);
+            if (width <= 0 || height <= 0) { continue; }
 
-            const line = document.createElement('div');
-            if (vertical) {
-                Object.assign(line.style, {
-                    position: 'fixed',
-                    left: `${left}px`,
-                    top: `${top}px`,
-                    width: '0',
-                    height: `${inlineSize}px`,
-                    borderLeft: '2px dotted #990020',
-                    boxSizing: 'border-box',
-                    pointerEvents: 'none',
-                });
-            } else {
-                Object.assign(line.style, {
-                    position: 'fixed',
-                    left: `${left}px`,
-                    top: `${Math.max(0, bottom - 2)}px`,
-                    width: `${inlineSize}px`,
-                    height: '0',
-                    borderBottom: '2px dotted #990020',
-                    boxSizing: 'border-box',
-                    pointerEvents: 'none',
-                });
-            }
-            container.appendChild(line);
+            const highlight = document.createElement('div');
+            Object.assign(highlight.style, {
+                position: 'fixed',
+                left: `${left}px`,
+                top: `${top}px`,
+                width: `${width}px`,
+                height: `${height}px`,
+                backgroundColor: WORD_HIGHLIGHT_COLOR,
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
+            });
+            container.appendChild(highlight);
         }
     }
 

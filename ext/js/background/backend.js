@@ -163,6 +163,8 @@ export class Backend {
             ['canAddAnkiNotes',              this._onApiCanAddAnkiNotes.bind(this)],
             ['updateAnkiNote',               this._onApiUpdateAnkiNote.bind(this)],
             ['getAnkiNoteInfo',              this._onApiGetAnkiNoteInfo.bind(this)],
+            ['morphmanGetKnownWords',        this._onApiMorphmanGetKnownWords.bind(this)],
+            ['morphmanOpenResults',          this._onApiMorphmanOpenResults.bind(this)],
             ['injectAnkiNoteMedia',          this._onApiInjectAnkiNoteMedia.bind(this)],
             ['viewNotes',                    this._onApiViewNotes.bind(this)],
             ['suspendAnkiCardsForNote',      this._onApiSuspendAnkiCardsForNote.bind(this)],
@@ -506,7 +508,12 @@ export class Backend {
      * @returns {void}
      */
     _onTabRemoved(tabId) {
-        void tabId;
+        const indexKey = `morphman-results-tab-${tabId}`;
+        chrome.storage.local.get(indexKey, (saved) => {
+            if (chrome.runtime.lastError) { return; }
+            const key = saved[indexKey];
+            if (typeof key === 'string') { chrome.storage.local.remove([indexKey, key]); }
+        });
     }
 
     /**
@@ -761,6 +768,35 @@ export class Backend {
 
             throw e;
         }
+    }
+
+    /** @type {import('api').ApiHandler<'morphmanGetKnownWords'>} */
+    async _onApiMorphmanGetKnownWords({notes}) {
+        if (!Array.isArray(notes) || notes.length > 200) { throw new Error('Too many words in Morphman batch'); }
+        const matchingIds = await this._anki.findNoteIds(notes);
+        return matchingIds.map((ids) => ids.length > 0);
+    }
+
+    /** @type {import('api').ApiHandler<'morphmanOpenResults'>} */
+    async _onApiMorphmanOpenResults({results}, sender) {
+        const id = crypto.randomUUID();
+        const key = `morphman-results-${id}`;
+        const value = {...results, contentOrigin: {tabId: sender.tab?.id ?? null, frameId: sender.frameId ?? 0}};
+        const save = (values) => new Promise((resolve, reject) => {
+            chrome.storage.local.set(values, () => {
+                const error = chrome.runtime.lastError;
+                if (error) { reject(new Error(error.message)); } else { resolve(); }
+            });
+        });
+        await save({[key]: value});
+        try {
+            const tab = await this._createTab(chrome.runtime.getURL(`/morphman-results.html?id=${id}`));
+            await save({[`morphman-results-tab-${tab.id}`]: key});
+        } catch (error) {
+            chrome.storage.local.remove(key);
+            throw error;
+        }
+        return null;
     }
 
     /** @type {import('api').ApiHandler<'getAnkiNoteInfo'>} */

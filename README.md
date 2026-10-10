@@ -88,6 +88,18 @@ Images stay local to the viewer tab. Selecting text in the image viewer automati
 
 ## Scanning
 
+### Morphman Mode (Safari)
+
+Click **Toggle Morphman Mode** in the toolbar popup to scan all readable text on the current page, including text below the viewport, and highlight Japanese dictionary words that start with kanji and have no matching Anki note. The page shows **characters complete / total characters**, advancing after each batch has been parsed and checked against Anki. Highlights appear progressively. Click the button again to remove them. The mode resets when the page reloads and rescans when page text changes. Scrolling displays the existing highlights without restarting the scan. Ordinary dictionary lookup still works through the highlights.
+
+Keep Anki open with AnkiConnect available. Matching uses the active Yomitan profile's term card models and word fields mapped exactly to `{expression}` or `{furigana-plain}`, across all decks. It checks dictionary forms and dictionary readings in batches, so conjugated text can match a card for its base word. Example sentences are not used as word fields. A message on the page reports connection errors rather than treating every word as missing.
+
+During each scan, repeated Anki expression searches reuse their earlier result, including expressions that were not found. Different models, fields, or furigana values are checked separately. A new scan checks Anki again so newly added cards are recognized.
+
+When the scan completes, a new **Morphman results** tab opens with missing words, readings, and source sentences. Click a row to select it, Shift-click to select a range, or Command-click to select individual rows. Command-A selects all available rows when the table has focus. Click any column heading to sort; click it again to reverse the order. The **Frequencies** column shows values from enabled frequency dictionaries and sorts numerically by the first listed dictionary, with missing values last. Choose a configured card format and click **Add selected to Anki**. Each row reports its confirmed addition or an error; failed rows can be retried. Each expression appears once, using its first sentence context from the page. Cards use the original page URL, title, sentence, word position, and the scanned profile's field templates and tags, including sentence furigana. Confirmed rows are disabled to prevent adding them again from this table. Results are stored locally while the results tab is open and removed when it closes.
+
+This scans webpage text, including TextHooker text. Safari's image Live Text recognition is not exposed as ordinary page text, so images themselves are not scanned. Embedded frame contents are not scanned by the toolbar toggle. Word segmentation follows Yomitan's dictionary parser and may be ambiguous for names or compounds.
+
 - On Safari for macOS, hold Shift over a word to look it up beside the word.
 - In Settings → Scanning → Safari lookup key, choose F17 to look up the word under the pointer or selected text with a keypress.
 - On Safari for macOS, Live Text in images is supported when you select the text with the mouse.

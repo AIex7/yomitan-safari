@@ -59,6 +59,7 @@ class DisplayController {
             const imageViewer = document.querySelector('.action-image-viewer');
             if (imageViewer instanceof HTMLElement) { imageViewer.hidden = false; }
             this._setupButtonEvents('.action-open-image-viewer', null, chrome.runtime.getURL('/image-viewer.html'));
+            this._setupMorphmanButton();
         }
         this._hotkeyUtil.os = os;
 
@@ -101,6 +102,42 @@ class DisplayController {
     }
 
     // Private
+
+    _setupMorphmanButton() {
+        const row = document.querySelector('.action-morphman');
+        const button = document.querySelector('.action-toggle-morphman');
+        const status = document.querySelector('.morphman-status');
+        if (!(row instanceof HTMLElement) || !(button instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) { return; }
+        row.hidden = false;
+        const request = async (action) => {
+            button.disabled = true;
+            try {
+                const tabs = await new Promise((resolve, reject) => {
+                    chrome.tabs.query({active: true, currentWindow: true}, (result) => {
+                        const error = chrome.runtime.lastError;
+                        if (error) { reject(new Error(error.message)); } else { resolve(result); }
+                    });
+                });
+                const tabId = tabs[0]?.id;
+                if (typeof tabId !== 'number') { throw new Error('No active page'); }
+                const result = await new Promise((resolve, reject) => {
+                    chrome.tabs.sendMessage(tabId, {action}, {frameId: 0}, (response) => {
+                        const error = chrome.runtime.lastError;
+                        if (error) { reject(new Error('Morphman Mode is unavailable on this page. Reload the page or check Safari website access.')); } else { resolve(response); }
+                    });
+                });
+                if (typeof result?.enabled !== 'boolean') { throw new Error('Reload this page to enable Morphman Mode.'); }
+                button.setAttribute('aria-pressed', `${result.enabled}`);
+                status.textContent = result.enabled ? 'On for this page' : 'Off for this page';
+            } catch (error) {
+                status.textContent = error instanceof Error ? error.message : 'Unable to toggle Morphman Mode';
+            } finally {
+                button.disabled = false;
+            }
+        };
+        button.addEventListener('click', () => { void request('morphmanToggle'); });
+        void request('morphmanGetState');
+    }
 
     /** */
     _updateDisplayModifierKey() {
