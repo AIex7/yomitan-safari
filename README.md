@@ -84,5 +84,5 @@ In Xcode:
 
 1. Select the `Yomitan Safari` scheme.
 2. Set the destination to `My Mac`.
-3. In Signing & Capabilities, set the same Developer Team on both `Yomitan Safari` and `Yomitan Safari Extension`. If done properly, the extension will show without the need to side load in developer settings.
+3. In Signing & Capabilities, set the same Developer Team on both `Yomitan Safari` and `Yomitan Safari Extension`. If done properly, the extension will show, without the need to side load.
 4. Build and run the app.
