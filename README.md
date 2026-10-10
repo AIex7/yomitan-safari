@@ -86,3 +86,9 @@ In Xcode:
 2. Set the destination to `My Mac`.
 3. In Signing & Capabilities, set the same Developer Team on both `Yomitan Safari` and `Yomitan Safari Extension`. If done properly, the extension will show, without the need to side load.
 4. Build and run the app.
+
+## Recorded audio (Safari)
+
+The inline lookup popup's audio buttons play recorded pronunciations using your **Settings → Audio** sources, in order, with default sources appended when enabled. Japanese defaults are JapanesePod101, LanguagePod101, and Jisho. Text-to-speech sources are skipped in this Safari popup. Volume, audio enablement, and autoplay are respected; autoplay plays the first result after the popup appears. Safari may require clicking the audio button to allow playback. If no recording is available, hover over the audio button for its status.
+
+Anki fields mapped to `{audio}` can include recordings when adding from the inline popup or Morphman results.

@@ -24,6 +24,7 @@ import {INVALID_NOTE_ID} from '../data/anki-util.js';
 import {DisplayContentManager} from '../display/display-content-manager.js';
 import {DisplayGenerator} from '../display/display-generator.js';
 import {TemplateRendererProxy} from '../templates/template-renderer-proxy.js';
+import {InlinePopupAudio} from '../media/inline-popup-audio.js';
 
 export class PopupInline extends EventDispatcher {
     constructor(application, id, depth, frameId, childrenSupported) {
@@ -91,6 +92,7 @@ export class PopupInline extends EventDispatcher {
         this._templateRenderer = new TemplateRendererProxy();
         this._ankiNoteBuilder = new AnkiNoteBuilder(this._application.api, this._templateRenderer);
         this._renderToken = null;
+        this._audio = new InlinePopupAudio(application.api);
         this._savedPosition = null;
         this._positionLoaded = false;
         this._dragState = null;
@@ -135,6 +137,7 @@ export class PopupInline extends EventDispatcher {
     }
 
     hide(_changeFocus) {
+        this._audio.stop();
         this._renderToken = null;
         this.stopHideDelayed();
         this._visible = false;
@@ -213,6 +216,7 @@ export class PopupInline extends EventDispatcher {
 
         this.stopHideDelayed();
         this.prepare();
+        this._audio.stop();
         const renderToken = {};
         this._renderToken = renderToken;
         const ankiEntries = await this._render(displayDetails, renderToken);
@@ -225,12 +229,16 @@ export class PopupInline extends EventDispatcher {
         this._container.style.display = 'block';
         this._container.style.opacity = '1';
         if (displayDetails !== null && typeof ankiEntries !== 'undefined') {
+            if (ankiEntries.length > 0 && this._options !== null) {
+                const {entry, node} = ankiEntries[0];
+                this._audio.autoPlay(entry, node, this._options, () => this._renderToken === renderToken && this._visible);
+            }
             void this._prepareAnkiActions(ankiEntries, displayDetails, renderToken);
         }
     }
 
     async setCustomCss(_css) {}
-    async clearAutoPlayTimer() {}
+    async clearAutoPlayTimer() { this._audio.clearAutoPlayTimer(); }
     async setContentScale(scale) {
         this._container.style.fontSize = `${14 * scale}px`;
     }
@@ -392,6 +400,9 @@ export class PopupInline extends EventDispatcher {
                 displayGenerator.createKanjiEntry(entry, dictionaryInfo) :
                 displayGenerator.createTermEntry(entry, dictionaryInfo)
             );
+            if (this._options !== null) {
+                this._audio.attach(entry, node, this._options, () => this._renderToken === renderToken && this._visible);
+            }
             ankiEntries.push({entry, node});
             fragment.appendChild(node);
         }
@@ -469,14 +480,14 @@ export class PopupInline extends EventDispatcher {
                 saveButton.disabled = true;
                 try {
                     let noteToSave = note;
-                    const furiganaRequirements = requirements.filter(({type}) => type === 'textFurigana');
-                    if (furiganaRequirements.length > 0) {
+                    const mediaRequirements = requirements.filter(({type}) => type === 'textFurigana' || type === 'audio');
+                    if (mediaRequirements.length > 0) {
                         if (optionsContext === null) { throw new Error('Options context not initialized'); }
                         const result = await this._ankiNoteBuilder.createNote({
                             ...noteDetails,
-                            requirements: furiganaRequirements,
+                            requirements: mediaRequirements,
                             mediaOptions: {
-                                audio: null,
+                                audio: mediaRequirements.some(({type}) => type === 'audio') ? await this._audio.getMediaOptions(options) : null,
                                 screenshot: {
                                     format: options.anki.screenshot.format,
                                     quality: options.anki.screenshot.quality,
@@ -832,8 +843,9 @@ export class PopupInline extends EventDispatcher {
 .entry + .entry {
     border-top: 1px solid var(--light-border-color);
 }
-.headword-list .headword-details > .action-button[data-action="play-audio"] {
-    display: none !important;
+.headword-list .headword-details > .action-button[data-action="play-audio"]:not([hidden]) {
+    display: inline-block !important;
+    position: static !important;
 }
 .entry-current-indicator,
 .entry-current-indicator-icon,

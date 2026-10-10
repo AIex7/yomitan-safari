@@ -5,6 +5,7 @@ import {TemplateRendererProxy} from '../templates/template-renderer-proxy.js';
 import {Frontend} from '../app/frontend.js';
 import {PopupFactory} from '../app/popup-factory.js';
 import {HotkeyHandler} from '../input/hotkey-handler.js';
+import {InlinePopupAudio} from '../media/inline-popup-audio.js';
 
 await Application.main(true, async (application) => {
     const status = document.querySelector('#status');
@@ -47,6 +48,7 @@ await Application.main(true, async (application) => {
         }
         if (formats.length === 0) { throw new Error('Configure an Anki term card format with a deck and model, then scan again.'); }
         const builder = new AnkiNoteBuilder(application.api, new TemplateRendererProxy());
+        const audio = new InlinePopupAudio(application.api);
         const entries = [];
         let anchor = null;
         let active = null;
@@ -249,10 +251,10 @@ await Application.main(true, async (application) => {
                         dictionaryStylesMap: builder.getDictionaryStylesMap(options.dictionaries),
                     };
                     let built = await builder.createNote(details);
-                    const requirements = built.requirements.filter(({type}) => type === 'textFurigana');
+                    const requirements = built.requirements.filter(({type}) => type === 'textFurigana' || type === 'audio');
                     if (requirements.length > 0) {
                         built = await builder.createNote({...details, requirements, mediaOptions: {
-                            audio: null,
+                            audio: requirements.some(({type}) => type === 'audio') ? await audio.getMediaOptions(options) : null,
                             screenshot: {format: options.anki.screenshot.format, quality: options.anki.screenshot.quality, contentOrigin},
                             textParsing: {optionsContext, scanLength: options.scanning.length},
                         }});
