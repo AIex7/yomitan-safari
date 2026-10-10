@@ -29,7 +29,8 @@ await Application.main(true, async (application) => {
     const entries = document.querySelector('#entries');
     const status = document.querySelector('#status');
     const limitInput = document.querySelector('#entry-limit');
-    if (!(entries instanceof HTMLElement) || !(status instanceof HTMLElement) || !(limitInput instanceof HTMLInputElement)) {
+    const clearButton = document.querySelector('#clear-session');
+    if (!(entries instanceof HTMLElement) || !(status instanceof HTMLElement) || !(limitInput instanceof HTMLInputElement) || !(clearButton instanceof HTMLButtonElement)) {
         throw new Error('TextHooker page is incomplete');
     }
     const saved = await new Promise((resolve, reject) => {
@@ -144,6 +145,12 @@ await Application.main(true, async (application) => {
         readings.clear();
         parsingOptions = null;
         render();
+    });
+    clearButton.addEventListener('click', () => {
+        history.clear();
+        render();
+        status.textContent = 'Waiting for clipboard text…';
+        void save().catch(() => { status.textContent = 'Could not save the cleared session.'; });
     });
     limitInput.addEventListener('change', () => {
         if (!history.setLimit(Number(limitInput.value))) {

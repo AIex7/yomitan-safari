@@ -53,6 +53,12 @@ export class TextHookerHistory {
         return true;
     }
 
+    clear() {
+        this.entries = [];
+        // Keep the limit and clipboard change count so the previous clipboard
+        // entry is not immediately re-added after clearing.
+    }
+
     /** @returns {TextHookerState} */
     snapshot() {
         return {entries: [...this.entries], limit: this.limit, lastChangeCount: this.lastChangeCount};

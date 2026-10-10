@@ -92,6 +92,8 @@ In Xcode:
 
 Open the Yomitan toolbar popup and click **Open TextHooker**. The page automatically reads plain text from the macOS clipboard while it is open; there is no paste button or browser clipboard permission prompt. New clipboard entries appear at the bottom in 26px text, and the page scrolls to the newest entry.
 
+Click **Clear session** at the top to remove all retained text without changing **Keep entries**. Clipboard monitoring continues, and the previously captured clipboard text is not re-added unless the clipboard changes.
+
 Use **Keep entries** to choose how many entries to retain (1–5,000; default 200). The limit and history are saved locally in Safari extension storage, and the oldest entries are removed when the limit is reached. TextHooker polls every half second; Safari may slow polling in background tabs, so very rapid clipboard changes can be missed.
 
 TextHooker automatically adds hiragana above Japanese kanji using your enabled Yomitan dictionaries, including for saved entries. This runs locally and needs no toggle or additional installation. Unknown words remain unchanged; names and words with multiple readings may receive an incorrect reading. History stores the original clipboard text, and dictionary lookup still works on the text below the furigana.

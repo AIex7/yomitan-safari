@@ -33,6 +33,7 @@ header {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
+    flex-wrap: wrap;
     padding: 16px 24px;
     background: light-dark(#faf9f6, #181a1e);
     border-bottom: 1px solid light-dark(#e4e3e0, #34373d);
@@ -42,6 +43,19 @@ h1 {
     margin: 0;
     font-size: 20px;
     font-weight: 600;
+}
+#clear-session {
+    margin-left: auto;
+    padding: 6px 12px;
+    font: inherit;
+    color: inherit;
+    background: light-dark(#fff, #292c32);
+    border: 1px solid light-dark(#d5d4d1, #454950);
+    border-radius: 6px;
+    cursor: pointer;
+}
+#clear-session:active {
+    background: light-dark(#ecebe8, #34373d);
 }
 input {
     width: 70px;
