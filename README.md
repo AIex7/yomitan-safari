@@ -3,7 +3,7 @@
 
 ## Features
 
-This extension adds several features no top of the original Yomitan:
+This extension adds several features on top of the original Yomitan:
 
 <table>
   <tr>
