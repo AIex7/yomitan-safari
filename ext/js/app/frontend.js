@@ -114,6 +114,8 @@ export class Frontend {
         this._optionsContextOverride = null;
         /** @type {?HTMLDivElement} */
         this._textIndicatorContainer = null;
+        this._textHighlightName = `yomitan-lookup-${crypto.randomUUID()}`;
+        this._textHighlightStyleRoots = new WeakSet();
         /** @type {?{x: number, y: number}} */
         this._safariPointerPosition = null;
         /** @type {boolean} */
@@ -1112,6 +1114,30 @@ export class Frontend {
     _updateTextIndicator(textSource) {
         if (!this._isSafariInlinePopupMode()) { return; }
 
+        this._clearTextIndicator();
+        if (textSource instanceof TextSourceRange && typeof Highlight !== 'undefined' && typeof CSS !== 'undefined' && CSS.highlights) {
+            const range = textSource.range;
+            const root = range.startContainer.getRootNode();
+            if (range.startContainer.isConnected && range.endContainer.isConnected && (root === document || root instanceof ShadowRoot)) {
+                try {
+                    if (!this._textHighlightStyleRoots.has(root)) {
+                        // A constructed stylesheet also works on pages with a strict
+                        // CSP, and belongs to the same tree as the highlighted text.
+                        const sheet = new CSSStyleSheet();
+                        sheet.replaceSync(`::highlight(${this._textHighlightName}) { background-color: ${WORD_HIGHLIGHT_COLOR}; }`);
+                        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+                        this._textHighlightStyleRoots.add(root);
+                    }
+                    CSS.highlights.set(this._textHighlightName, new Highlight(range.cloneRange()));
+                    return;
+                } catch (error) {
+                    console.warn('[Yomitan][Safari][Highlight] Using rectangle fallback', error);
+                }
+            }
+        }
+
+        // Element sources (such as input values) and disconnected imposter
+        // ranges cannot be painted by the Custom Highlight API.
         const rects = textSource.getRects();
         if (!(Array.isArray(rects) && rects.length > 0)) {
             this._clearTextIndicator();
@@ -1170,6 +1196,9 @@ export class Frontend {
      * @returns {void}
      */
     _clearTextIndicator() {
+        if (typeof CSS !== 'undefined' && CSS.highlights) {
+            CSS.highlights.delete(this._textHighlightName);
+        }
         const {_textIndicatorContainer: container} = this;
         if (container === null) { return; }
         container.replaceChildren();
