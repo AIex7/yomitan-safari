@@ -30,6 +30,8 @@ export class SettingsDisplayController {
     constructor(settingsController, modalController) {
         /** @type {import('./settings-controller.js').SettingsController} */
         this._settingsController = settingsController;
+        /** @type {WeakMap<HTMLTextAreaElement, string>} */
+        this._indentChanges = new WeakMap();
         /** @type {import('./modal-controller.js').ModalController} */
         this._modalController = modalController;
         /** @type {HTMLElement} */
@@ -69,6 +71,16 @@ export class SettingsDisplayController {
         const onInputTabActionKeyDown = this._onInputTabActionKeyDown.bind(this);
         for (const node of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-tab-action]'))) {
             node.addEventListener('keydown', onInputTabActionKeyDown, false);
+            if (node instanceof HTMLTextAreaElement) {
+                node.addEventListener('change', () => this._indentChanges.delete(node));
+                node.addEventListener('blur', () => {
+                    const previousValue = this._indentChanges.get(node);
+                    this._indentChanges.delete(node);
+                    if (typeof previousValue === 'string' && node.value !== previousValue) {
+                        node.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                });
+            }
         }
 
         for (const node of /** @type {NodeListOf<HTMLIFrameElement>} */ (document.querySelectorAll('.defer-load-iframe'))) {
@@ -342,7 +354,7 @@ export class SettingsDisplayController {
      * @param {string[]} args
      */
     _indentInput(e, node, args) {
-        if (!(node instanceof HTMLTextAreaElement)) { return; }
+        if (!(node instanceof HTMLTextAreaElement) || node.readOnly || node.disabled) { return; }
 
         let indent = '\t';
         if (args.length > 1) {
@@ -361,18 +373,31 @@ export class SettingsDisplayController {
             const selectionEndNew = lineStart + lineWhitespace.length;
             const removeCount = selectionEndNew - selectionStartNew;
             if (removeCount > 0) {
-                node.selectionStart = selectionStartNew;
-                node.selectionEnd = selectionEndNew;
-                document.execCommand('delete', false);
+                node.setRangeText('', selectionStartNew, selectionEndNew, 'start');
                 node.selectionStart = Math.max(lineStart, start - removeCount);
                 node.selectionEnd = Math.max(lineStart, end - removeCount);
+                this._notifyIndentInput(node, value, 'deleteContentBackward', null);
             }
         } else {
             if (indent.length > 0) {
                 const indentLength = (Math.ceil((start - lineStart + 1) / indent.length) * indent.length - (start - lineStart));
-                document.execCommand('insertText', false, indent.substring(0, indentLength));
+                const text = indent.substring(0, indentLength);
+                node.setRangeText(text, start, end, 'end');
+                this._notifyIndentInput(node, value, 'insertText', text);
             }
         }
+    }
+
+    /**
+     * @param {HTMLTextAreaElement} node
+     * @param {string} previousValue
+     * @param {string} inputType
+     * @param {string|null} data
+     */
+    _notifyIndentInput(node, previousValue, inputType, data) {
+        if (node.value === previousValue) { return; }
+        if (!this._indentChanges.has(node)) { this._indentChanges.set(node, previousValue); }
+        node.dispatchEvent(new InputEvent('input', {bubbles: true, inputType, data}));
     }
 
     /**

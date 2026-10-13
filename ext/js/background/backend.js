@@ -222,6 +222,11 @@ export class Backend {
             ['openPopupWindow', this._onCommandOpenPopupWindow.bind(this)],
         ]));
 
+        if (this._isSafariWebExtension()) {
+            this._commandHandlers.delete('openSearchPage');
+            this._commandHandlers.delete('openPopupWindow');
+        }
+
         /** @type {YomitanApi} */
         this._yomitanApi = new YomitanApi(this._apiMap, this._offscreen);
         /** @type {CacheMap<string, {originalTextLength: number, textSegments: import('api').ParseTextSegment[]}>} */
@@ -382,6 +387,7 @@ export class Backend {
      * @param {import('clipboard-monitor').EventArgument<'change'>} details
      */
     async _onClipboardTextChange({text}) {
+        if (this._isSafariWebExtension()) { return; }
         // Only update if tab does not exist
         if (await this._tabExists('/search.html')) { return; }
 
@@ -1155,6 +1161,7 @@ export class Backend {
 
     /** @type {import('api').ApiHandler<'isTabSearchPopup'>} */
     async _onApiIsTabSearchPopup({tabId}) {
+        if (this._isSafariWebExtension()) { return false; }
         const baseUrl = chrome.runtime.getURL('/search.html');
         const tab = typeof tabId === 'number' ? await this._checkTabUrl(tabId, (url) => url !== null && url.startsWith(baseUrl)) : null;
         return (tab !== null);
@@ -1333,6 +1340,7 @@ export class Backend {
      * @param {undefined|{mode: import('backend').Mode, query?: string}} params
      */
     async _onCommandOpenSearchPage(params) {
+        if (this._isSafariWebExtension()) { return; }
         /** @type {import('backend').Mode} */
         let mode = 'existingOrNewTab';
         let query = '';
@@ -1462,6 +1470,7 @@ export class Backend {
      * @returns {Promise<{tab: chrome.tabs.Tab, created: boolean}>}
      */
     _getOrCreateSearchPopupWrapper() {
+        if (this._isSafariWebExtension()) { throw new Error('The search page is not available in Safari. Use TextHooker instead.'); }
         if (this._searchPopupTabCreatePromise === null) {
             const promise = this._getOrCreateSearchPopup();
             this._searchPopupTabCreatePromise = promise;
@@ -1664,7 +1673,7 @@ export class Backend {
 
         void this._yomitanApi.setEnabled(options.general.enableYomitanApi && enabled);
 
-        if (options.clipboard.enableBackgroundMonitor && enabled) {
+        if (!this._isSafariWebExtension() && options.clipboard.enableBackgroundMonitor && enabled) {
             this._clipboardMonitor.start();
         } else {
             this._clipboardMonitor.stop();
@@ -1715,7 +1724,7 @@ export class Backend {
     /** */
     _attachOmniboxListener() {
         try {
-            if (!chrome.omnibox) { return; }
+            if (this._isSafariWebExtension() || !chrome.omnibox) { return; }
             chrome.omnibox.onInputEntered.addListener((text) => {
                 const newURL = 'search.html?query=' + encodeURIComponent(text);
                 void chrome.tabs.create({url: newURL});

@@ -375,15 +375,14 @@ select.profile-select {
     }
 }
 
-.action-open-texthooker,.action-open-image-viewer {
-    display: inline-block;
-    padding: 8px 14px;
-    border: 1px solid currentColor;
-    border-radius: 6px;
-    color: inherit;
-    text-decoration: none;
+.action-emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    font-size: 1.5em;
+    line-height: 1;
 }
 
-.action-open-texthooker:hover,.action-open-image-viewer:hover {
-    background-color: rgba(128, 128, 128, 0.15);
-}
+.action-label { display: none; }

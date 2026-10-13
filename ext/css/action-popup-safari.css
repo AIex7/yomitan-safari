@@ -26,3 +26,42 @@
 :root.safari-action-popup body[data-loaded=true] #action-popup {
     display: flex;
 }
+
+:root.safari-action-popup .action-scan-hint {
+    display: none;
+}
+
+:root.safari-action-popup .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+:root.safari-action-popup .action-buttons > button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75em;
+    width: 100%;
+    min-width: 0;
+    padding: 0.5em 0.75em;
+    text-align: left;
+}
+
+:root.safari-action-popup .action-label {
+    display: block;
+}
+
+:root.safari-action-popup .action-toggle-morphman[aria-pressed=true] {
+    border-color: var(--accent-color);
+    background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+:root.safari-action-popup .action-buttons > button {
+    --button-focus-border-color: var(--button-default-border-color);
+    --button-focus-background-color: transparent;
+    --button-focus-shadow: none;
+    --button-focus-visible-border-color: var(--button-default-border-color);
+    --button-focus-visible-background-color: transparent;
+    --button-focus-visible-shadow: none;
+}
+

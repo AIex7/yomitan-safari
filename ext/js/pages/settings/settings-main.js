@@ -62,6 +62,24 @@ async function setupGenericSettingController(genericSettingController) {
 }
 
 await Application.main(true, async (application) => {
+    if (chrome.runtime.getURL('/').startsWith('safari-web-extension://')) {
+        // Keep shared settings controls in the DOM for their controllers, but
+        // hide options for the search page that Safari no longer packages.
+        const hide = (node) => { if (node instanceof HTMLElement) { node.style.display = 'none'; } };
+        hide(document.querySelector('[data-setting="scanning.enableOnSearchPage"]')?.closest('.settings-item'));
+        for (const id of ['clipboard', 'window']) {
+            const heading = document.querySelector(`#${id}`)?.closest('.heading-container');
+            const section = id === 'clipboard' ? heading?.parentElement : heading;
+            hide(section?.nextElementSibling);
+            hide(section);
+            hide(document.querySelector(`.outline-item[href="#${id}"]`));
+        }
+        for (const link of document.querySelectorAll('a[href="/search.html"]')) {
+            const paragraph = link.closest('p');
+            if (paragraph) { paragraph.textContent = "Yomitan can parse sentences and add furigana to Anki cards."; }
+        }
+    }
+
     const documentFocusController = new DocumentFocusController();
     documentFocusController.prepare();
 

@@ -29,7 +29,7 @@
                 </select>
             </div>
         </div>
-        <div class="action-container">
+        <div class="action-container action-scan-hint">
             <div class="action-item-center">
                 <label class="toggle">
                     <input tabindex="0" type="checkbox" class="enable-search">
@@ -42,27 +42,24 @@
                 <p class="tooltip">Hover over text to scan</p>
             </div>
         </div>
-        <div class="action-container action-texthooker" hidden>
-            <div class="action-item-center">
-                <a class="action-open-texthooker" href="/texthooker.html" target="_blank" rel="noopener">Open TextHooker</a>
-            </div>
-        </div>
-        <div class="action-container action-image-viewer" hidden>
-            <div class="action-item-center">
-                <a class="action-open-image-viewer" href="/image-viewer.html" target="_blank" rel="noopener">Open image viewer</a>
-            </div>
-        </div>
-        <div class="action-container action-morphman" hidden>
-            <div class="action-item-center">
-                <button type="button" class="low-emphasis action-toggle-morphman" aria-pressed="false">Toggle Morphman Mode</button>
-                <p class="morphman-status" aria-live="polite"></p>
-            </div>
-        </div>
         <div class="action-container action-buttons">
+            <button type="button" class="low-emphasis action-texthooker action-open-texthooker" title="TextHooker" aria-label="TextHooker" hidden>
+                <div class="action-icon"><span class="action-emoji" aria-hidden="true">📋</span></div>
+                <span class="action-label">TextHooker</span>
+            </button>
+            <button type="button" class="low-emphasis action-image-viewer action-open-image-viewer" title="Images" aria-label="Images" hidden>
+                <div class="action-icon"><span class="action-emoji" aria-hidden="true">🖼️</span></div>
+                <span class="action-label">Images</span>
+            </button>
+            <button type="button" class="low-emphasis action-morphman action-toggle-morphman" title="Morphman Mode" aria-label="Morphman Mode" aria-pressed="false" hidden>
+                <div class="action-icon"><span class="action-emoji" aria-hidden="true">🧩</span></div>
+                <span class="action-label">Morphman Mode</span>
+            </button>
             <button tabindex="0" type="button" class="low-emphasis action-open-settings" title="Settings" data-hotkey='["global:openSettingsPage","title","Settings ({0})"]'>
                 <div class="action-icon">
                     <span class="icon" data-icon="cog"></span>
                 </div>
+                <span class="action-label">Settings</span>
             </button>
             <button tabindex="0" type="button" class="low-emphasis action-open-search" title="Search&#010;Shift+click to open here" data-hotkey='["global:openSearchPage","title","Search ({0})\nShift+click to open here"]'>
                 <div class="action-icon">
@@ -73,6 +70,7 @@
                 <div class="action-icon">
                     <span class="icon" data-icon="question-mark-circle"></span>
                 </div>
+                <span class="action-label">Information</span>
             </button>
         </div>
     </div>

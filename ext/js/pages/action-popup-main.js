@@ -47,6 +47,7 @@ class DisplayController {
         const {platform: {os}} = await this._api.getEnvironmentInfo();
         this._isSafariBrowser = await this._isSafari();
         if (this._isSafariBrowser) {
+            document.querySelector('.action-scan-hint')?.remove();
             for (const toggle of document.querySelectorAll('.enable-search,.enable-search2')) {
                 const label = toggle.closest('.toggle');
                 if (label !== null) { label.remove(); }
@@ -65,7 +66,11 @@ class DisplayController {
 
         this._showExtensionInfo(manifest);
         void this._setupEnvironment();
-        this._setupButtonEvents('.action-open-search', 'openSearchPage', chrome.runtime.getURL('/search.html'), this._onSearchClick.bind(this));
+        if (this._isSafariBrowser) {
+            document.querySelector('.action-open-search')?.remove();
+        } else {
+            this._setupButtonEvents('.action-open-search', 'openSearchPage', chrome.runtime.getURL('/search.html'), this._onSearchClick.bind(this));
+        }
         this._setupButtonEvents('.action-open-info', 'openInfoPage', chrome.runtime.getURL('/info.html'));
 
         const optionsFull = await this._api.optionsGetFull();
@@ -106,8 +111,7 @@ class DisplayController {
     _setupMorphmanButton() {
         const row = document.querySelector('.action-morphman');
         const button = document.querySelector('.action-toggle-morphman');
-        const status = document.querySelector('.morphman-status');
-        if (!(row instanceof HTMLElement) || !(button instanceof HTMLButtonElement) || !(status instanceof HTMLElement)) { return; }
+        if (!(row instanceof HTMLElement) || !(button instanceof HTMLButtonElement)) { return; }
         row.hidden = false;
         const request = async (action) => {
             button.disabled = true;
@@ -128,9 +132,10 @@ class DisplayController {
                 });
                 if (typeof result?.enabled !== 'boolean') { throw new Error('Reload this page to enable Morphman Mode.'); }
                 button.setAttribute('aria-pressed', `${result.enabled}`);
-                status.textContent = result.enabled ? 'On for this page' : 'Off for this page';
+                button.title = 'Morphman Mode';
             } catch (error) {
-                status.textContent = error instanceof Error ? error.message : 'Unable to toggle Morphman Mode';
+                button.title = error instanceof Error ? error.message : 'Unable to toggle Morphman Mode';
+                console.warn('[Yomitan][Morphman]', error);
             } finally {
                 button.disabled = false;
             }
@@ -146,9 +151,6 @@ class DisplayController {
         const modifierKeyHint = document.querySelectorAll('.tooltip');
 
         if (this._isSafariBrowser) {
-            for (let i = 0; i < modifierKeyHint.length; i++) {
-                modifierKeyHint[i].textContent = `Look up text with ${profiles[profileCurrent].options.scanning.safariLookupKey}`;
-            }
             return;
         }
 
@@ -235,9 +237,19 @@ class DisplayController {
             }
 
             if (typeof url === 'string') {
-                node.href = url;
-                node.target = '_blank';
-                node.rel = 'noopener';
+                if (node instanceof HTMLAnchorElement) {
+                    node.href = url;
+                    node.target = '_blank';
+                    node.rel = 'noopener';
+                } else if (typeof command !== 'string') {
+                    node.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        chrome.tabs.create({url}, () => {
+                            const error = chrome.runtime.lastError;
+                            if (error) { console.error('[Yomitan][Toolbar]', error.message); }
+                        });
+                    });
+                }
             }
         }
     }

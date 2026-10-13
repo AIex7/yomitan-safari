@@ -353,6 +353,26 @@
                 {
                     "action": "delete",
                     "path": [
+                        "omnibox"
+                    ]
+                },
+                {
+                    "action": "delete",
+                    "path": [
+                        "commands",
+                        "openSearchPage"
+                    ]
+                },
+                {
+                    "action": "delete",
+                    "path": [
+                        "commands",
+                        "openPopupWindow"
+                    ]
+                },
+                {
+                    "action": "delete",
+                    "path": [
                         "background",
                         "page"
                     ]
@@ -423,7 +443,8 @@
                 }
             ],
             "excludeFiles": [
-                "sw.js"
+                "sw.js",
+                "search.html"
             ]
         },
         {
