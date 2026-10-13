@@ -132,7 +132,7 @@ class DisplayController {
                 });
                 if (typeof result?.enabled !== 'boolean') { throw new Error('Reload this page to enable Morphman Mode.'); }
                 button.setAttribute('aria-pressed', `${result.enabled}`);
-                button.title = 'Morphman Mode';
+                button.title = 'Morphman';
             } catch (error) {
                 button.title = error instanceof Error ? error.message : 'Unable to toggle Morphman Mode';
                 console.warn('[Yomitan][Morphman]', error);

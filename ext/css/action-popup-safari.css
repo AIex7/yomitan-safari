@@ -1,22 +1,41 @@
-/* Keep Safari's toolbar popover compact if its WebView reports hover: none. */
+/* Safari toolbar menu: compact system typography and monochrome symbols. */
+:root.safari-action-popup {
+    --menu-background: #f5f5f5;
+    --menu-text: #252525;
+    --menu-hover: rgba(0, 0, 0, 0.06);
+    --menu-pressed: rgba(0, 0, 0, 0.1);
+    --menu-separator: rgba(0, 0, 0, 0.12);
+}
+
+:root.safari-action-popup[data-theme=dark] {
+    --menu-background: #292929;
+    --menu-text: #ededed;
+    --menu-hover: rgba(255, 255, 255, 0.09);
+    --menu-pressed: rgba(255, 255, 255, 0.14);
+    --menu-separator: rgba(255, 255, 255, 0.15);
+}
+
 :root.safari-action-popup body {
     box-sizing: border-box;
     min-width: 0;
-    width: 240px;
-    max-width: 240px;
+    width: 220px;
+    max-width: 220px;
     height: auto;
-    font-size: var(--font-size);
-    text-align: center;
+    margin: 0;
+    padding: 6px;
+    font: 13px/1.35 -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--menu-background);
+    color: var(--menu-text);
+    text-align: left;
 }
 
-:root.safari-action-popup .toggle {
+:root.safari-action-popup .toggle,
+:root.safari-action-popup .action-scan-hint {
     display: none;
 }
 
-:root.safari-action-popup .toggle-on,
-:root.safari-action-popup .toggle-off,
 :root.safari-action-popup select.profile-select {
-    font-size: var(--font-size);
+    font: inherit;
 }
 
 :root.safari-action-popup body:not([data-loaded=true]) #action-popup {
@@ -25,43 +44,100 @@
 
 :root.safari-action-popup body[data-loaded=true] #action-popup {
     display: flex;
-}
-
-:root.safari-action-popup .action-scan-hint {
-    display: none;
+    align-items: stretch;
 }
 
 :root.safari-action-popup .action-buttons {
     flex-direction: column;
     align-items: stretch;
+    padding: 0;
+    gap: 2px;
 }
 
 :root.safari-action-popup .action-buttons > button {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 0.75em;
+    gap: 10px;
     width: 100%;
     min-width: 0;
-    padding: 0.5em 0.75em;
+    min-height: 30px;
+    padding: 5px 10px;
+    border: 0;
+    border-radius: 5px;
+    box-shadow: none;
+    background: transparent;
+    color: var(--menu-text);
+    font: inherit;
     text-align: left;
+    transition: none;
+}
+
+:root.safari-action-popup .action-buttons > button:hover {
+    background: var(--menu-hover);
+    color: var(--menu-text);
+    box-shadow: none;
+}
+
+:root.safari-action-popup .action-buttons > button:active {
+    background: var(--menu-pressed);
+}
+
+:root.safari-action-popup .action-buttons > button:disabled {
+    opacity: 0.45;
 }
 
 :root.safari-action-popup .action-label {
     display: block;
 }
 
-:root.safari-action-popup .action-toggle-morphman[aria-pressed=true] {
-    border-color: var(--accent-color);
-    background-color: color-mix(in srgb, var(--accent-color) 15%, transparent);
+:root.safari-action-popup .action-icon {
+    display: flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
 }
 
-:root.safari-action-popup .action-buttons > button {
-    --button-focus-border-color: var(--button-default-border-color);
-    --button-focus-background-color: transparent;
-    --button-focus-shadow: none;
-    --button-focus-visible-border-color: var(--button-default-border-color);
-    --button-focus-visible-background-color: transparent;
-    --button-focus-visible-shadow: none;
+:root.safari-action-popup .action-icon > .icon {
+    display: none;
 }
 
+:root.safari-action-popup .action-menu-symbol {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+:root.safari-action-popup .action-open-settings {
+    margin-top: 9px;
+}
+
+:root.safari-action-popup .action-open-settings::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 4px;
+    right: 4px;
+    height: 1px;
+    background: var(--menu-separator);
+    pointer-events: none;
+}
+
+:root.safari-action-popup .action-toggle-morphman[aria-pressed=true]::after {
+    content: '✓';
+    margin-left: auto;
+    font-size: 13px;
+}
+
+:root.safari-action-popup .action-buttons > button:focus-visible:not(:hover) {
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+}
