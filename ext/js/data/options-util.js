@@ -587,6 +587,7 @@ export class OptionsUtil {
             this._updateVersion72,
             this._updateVersion73,
             this._updateVersion74,
+            this._updateSafariMonochromeIconDefault,
         ];
         /* eslint-enable @typescript-eslint/unbound-method */
         if (typeof targetVersion === 'number' && targetVersion < result.length) {
@@ -1840,6 +1841,17 @@ export class OptionsUtil {
     async _updateVersion75(options) {
         for (const profile of options.profiles) {
             profile.options.general.showGuide = false;
+        }
+    }
+
+    /**
+     * Enable the new Safari icon default once for existing profiles.
+     * @type {import('options-util').UpdateFunction}
+     */
+    _updateSafariMonochromeIconDefault(options) {
+        if (!chrome.runtime.getURL('/').startsWith('safari-web-extension://')) { return; }
+        for (const profile of options.profiles) {
+            profile.options.general.safariMonochromeIcon = true;
         }
     }
 

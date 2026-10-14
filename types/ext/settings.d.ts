@@ -127,6 +127,7 @@ export type GeneralOptions = {
     popupScaleRelativeToPageZoom: boolean;
     popupScaleRelativeToVisualViewport: boolean;
     showGuide: boolean;
+    safariMonochromeIcon: boolean;
     enableContextMenuScanSelected: boolean;
     compactTags: boolean;
     averageFrequency: boolean;

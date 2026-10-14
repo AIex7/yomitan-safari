@@ -132,6 +132,8 @@ export class Backend {
 
         /** @type {?string} */
         this._defaultBrowserActionTitle = null;
+        this._toolbarIconMonochrome = null;
+        this._toolbarIconUpdatePromise = Promise.resolve();
         /** @type {?import('core').Timeout} */
         this._badgePrepareDelayTimer = null;
         /** @type {?import('log').LogLevel} */
@@ -1659,6 +1661,8 @@ export class Backend {
         const options = this._getProfileOptions({current: true}, false);
         this._updateBadge();
 
+        this._updateSafariToolbarIcon(options.general.safariMonochromeIcon === true);
+
         const enabled = options.general.enable;
         const ankiEnabled = (options.anki.enable || this._isSafariWebExtension());
 
@@ -2064,6 +2068,34 @@ export class Backend {
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
+    }
+
+    /** @param {boolean} monochrome */
+    _updateSafariToolbarIcon(monochrome) {
+        if (!this._isSafariWebExtension() || typeof chrome.action?.setIcon !== 'function') { return; }
+        // Serialize updates so rapid setting/profile changes leave the last icon applied.
+        this._toolbarIconUpdatePromise = this._toolbarIconUpdatePromise.then(async () => {
+            if (this._toolbarIconMonochrome === monochrome) { return; }
+            const manifest = chrome.runtime.getManifest();
+            const original = manifest.icons ?? manifest.action?.default_icon;
+            if (typeof original === 'undefined') { return; }
+            const path = monochrome ? {
+                16: 'images/icon-monochrome16.png',
+                19: 'images/icon-monochrome19.png',
+                32: 'images/icon-monochrome32.png',
+                38: 'images/icon-monochrome38.png',
+                48: 'images/icon-monochrome48.png',
+                64: 'images/icon-monochrome64.png',
+                128: 'images/icon-monochrome128.png',
+            } : original;
+            await new Promise((resolve, reject) => {
+                chrome.action.setIcon({path}, () => {
+                    const error = chrome.runtime.lastError;
+                    if (error) { reject(new Error(error.message)); } else { resolve(); }
+                });
+            });
+            this._toolbarIconMonochrome = monochrome;
+        }).catch((error) => log.warn(error));
     }
 
     /**

@@ -351,6 +351,19 @@
             "fileName": "yomitan-safari-web-extension",
             "modifications": [
                 {
+                    "action": "set",
+                    "path": ["action", "default_icon"],
+                    "value": {
+                        "16": "images/icon-monochrome16.png",
+                        "19": "images/icon-monochrome19.png",
+                        "32": "images/icon-monochrome32.png",
+                        "38": "images/icon-monochrome38.png",
+                        "48": "images/icon-monochrome48.png",
+                        "64": "images/icon-monochrome64.png",
+                        "128": "images/icon-monochrome128.png"
+                    }
+                },
+                {
                     "action": "delete",
                     "path": [
                         "omnibox"

@@ -63,6 +63,7 @@ async function setupGenericSettingController(genericSettingController) {
 
 await Application.main(true, async (application) => {
     if (chrome.runtime.getURL('/').startsWith('safari-web-extension://')) {
+        for (const item of document.querySelectorAll('.safari-only')) { item.hidden = false; }
         // Keep shared settings controls in the DOM for their controllers, but
         // hide options for the search page that Safari no longer packages.
         const hide = (node) => { if (node instanceof HTMLElement) { node.style.display = 'none'; } };
