@@ -27,9 +27,10 @@ button,select { color: var(--ink); }
 button { padding: 5px 11px; min-height: 28px; }
 button:disabled { opacity: .4; }
 button:focus-visible,summary:focus-visible,select:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
-.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 10px 18px; background: var(--chrome); border-bottom: 1px solid var(--line); flex-shrink: 0; z-index: 5; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 34px; min-height: 34px; background: var(--chrome); border-top: 1px solid var(--line); flex-shrink: 0; z-index: 5; }
+.toolbar button { min-height: 24px; padding: 2px 7px; }
 .toolbar-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.book-heading { display: flex; flex-direction: column; min-width: 0; align-items: center; line-height: 1.5; }
+.book-heading { display: flex; flex: 1; gap: 8px; min-width: 0; align-items: center; line-height: 1.5; color: var(--ink); }
 .book-heading strong { font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #book-author { color: var(--secondary); font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; padding: 4px 7px; min-width: 29px; }
@@ -38,7 +39,7 @@ button:focus-visible,summary:focus-visible,select:focus-visible { outline: 2px s
 #appearance summary { list-style: none; padding: 4px 10px; font-family: Georgia, serif; font-size: 17px; border-radius: 5px; }
 #appearance summary::-webkit-details-marker { display: none; }
 #appearance[open] summary,#appearance summary:hover { background: var(--hover); }
-.appearance-panel { position: absolute; top: calc(100% + 14px); right: 0; width: 260px; padding: 18px; display: grid; gap: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--chrome); box-shadow: 0 10px 30px #0002; }
+.appearance-panel { position: absolute; bottom: calc(100% + 10px); right: 0; width: 260px; padding: 18px; display: grid; gap: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--chrome); box-shadow: 0 10px 30px #0002; color: var(--ink); font-size: 13px; }
 .appearance-panel label { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; }
 .appearance-panel input { grid-column: 1/-1; width: 100%; grid-row: 2; }
 .appearance-panel output { grid-column: 2; grid-row: 1; color: var(--secondary); font-variant-numeric: tabular-nums; }
@@ -64,7 +65,7 @@ button:focus-visible,summary:focus-visible,select:focus-visible { outline: 2px s
 #chapter > :first-child { margin-top: 0; }
 #chapter ruby { ruby-position: over; }
 #chapter rt { font-size: .5em; user-select: none; line-height: 1; }
-#chapter img { display: block; max-width: 100%; max-height: var(--reading-height, 100dvh); width: auto; height: auto; object-fit: contain; margin: 0 auto; }
+#chapter img { display: block; max-width: 100%; max-height: var(--reading-height, 100dvh); width: auto; height: auto; object-fit: contain; margin: 0 auto; -webkit-user-drag: none; }
 #chapter a { color: inherit; text-decoration-color: var(--secondary); text-underline-offset: .2em; }
 #chapter pre { white-space: pre-wrap; }
 #chapter blockquote { margin-inline: 1em; padding-inline-start: 1em; border-inline-start: 2px solid var(--line); }
@@ -75,17 +76,18 @@ button:focus-visible,summary:focus-visible,select:focus-visible { outline: 2px s
 :root[data-writing-mode=vertical] #reading-area { direction: rtl; }
 :root[data-writing-mode=vertical] #chapter { direction: ltr; }
 :root[data-writing-mode=vertical] #chapter img { max-height: 100%; max-width: 85vw; }
-footer { display: flex; align-items: center; gap: 16px; padding: 7px 18px; background: var(--chrome); border-top: 1px solid var(--line); flex-shrink: 0; color: var(--secondary); font-size: 11px; min-height: 34px; }
-#chapter-select { max-width: min(45vw, 420px); min-width: 120px; font-size: 11px; }
+footer { color: var(--secondary); font-size: 11px; }
+#chapter-select { width: clamp(80px, 16vw, 240px); min-width: 0; font-size: 11px; }
 #position { white-space: nowrap; font-variant-numeric: tabular-nums; }
-#status { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#status { max-width: 24vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#status:empty { display: none; }
 #drop-hint { position: fixed; inset: 12px; border: 2px dashed var(--secondary); border-radius: 14px; z-index: 100; display: grid; place-items: center; background: var(--chrome); font-size: 24px; pointer-events: none; }
 @media (max-width: 650px) {
-    .toolbar { flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
-    .book-heading { order: 3; width: 100%; align-items: flex-start; }
-    #contents { position: absolute; inset: 88px auto 35px 0; z-index: 4; width: min(280px, 80vw); box-shadow: 6px 0 24px #0002; }
+    .toolbar { gap: 6px; padding-inline: 6px; }
+    #book-author { display: none; }
+    #position { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+    #contents { position: absolute; inset: 0 auto 34px 0; z-index: 4; width: min(280px, 80vw); box-shadow: 6px 0 24px #0002; }
     #chapter { padding: 24px; }
-    footer { gap: 8px; padding-inline: 10px; }
 }
 
 :root[data-page-direction=rtl] #previous svg,
@@ -97,3 +99,5 @@ footer { display: flex; align-items: center; gap: 16px; padding: 7px 18px; backg
 #chapter[data-image-only=true] :not(img) { display: contents; }
 #chapter[data-image-only=true] br { display: none; }
 :root #chapter[data-image-only=true] img { display: block; width: 100%; height: var(--reading-height, 100dvh); max-width: none; max-height: none; margin: 0; padding: 0; object-fit: contain; }
+#chapter .epub-image-error { display: block; padding: 24px; color: var(--secondary); font: 14px/1.5 -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; }
+#chapter[data-image-only=true] .epub-image-error { display: grid; place-items: center; height: var(--reading-height, 100dvh); margin: 0; }

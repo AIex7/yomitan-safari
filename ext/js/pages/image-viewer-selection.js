@@ -17,11 +17,12 @@
  */
 
 /**
- * Automatically looks up selected text only on the image viewer page.
+ * Automatically looks up selected text on a reader page.
  * @param {import('../application.js').Application} application
  * @param {import('../app/frontend.js').Frontend} frontend
+ * @param {{shouldLookup?: (selection: Selection) => boolean}} [options]
  */
-export function prepareImageViewerSelection(application, frontend) {
+export function prepareImageViewerSelection(application, frontend, {shouldLookup = () => true} = {}) {
     /** @type {ReturnType<typeof setTimeout>|null} */
     let timer = null;
     let generation = 0;
@@ -38,6 +39,7 @@ export function prepareImageViewerSelection(application, frontend) {
         const selection = window.getSelection();
         const query = selection !== null ? selection.toString().trim() : '';
         if (selection === null || query.length === 0) { previousSelection = ''; return; }
+        if (!shouldLookup(selection)) { previousSelection = ''; return; }
         const popup = frontend.popup;
         if (popup === null) { return; }
         const container = popup.container;

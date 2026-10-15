@@ -3,6 +3,7 @@ import {Frontend} from '../app/frontend.js';
 import {PopupFactory} from '../app/popup-factory.js';
 import {HotkeyHandler} from '../input/hotkey-handler.js';
 import {EpubBook} from './epub-book.js';
+import {prepareImageViewerSelection} from './image-viewer-selection.js';
 
 await Application.main(true, async (application) => {
     const root = document.documentElement;
@@ -34,6 +35,15 @@ await Application.main(true, async (application) => {
     popupFactory.prepare();
     const frontend = new Frontend({application, popupFactory, depth: 0, parentPopupId: null, parentFrameId: null, useProxyPopup: false, pageType: 'web', canUseWindowPopup: false, allowRootFramePopupProxy: false, childrenSupported: true, hotkeyHandler: hotkeys});
     await frontend.prepare();
+    let selectedImage = null;
+    document.addEventListener('mousedown', (event) => {
+        selectedImage = event.composedPath().find((node) => node instanceof HTMLImageElement && chapter.contains(node)) || null;
+    }, true);
+    prepareImageViewerSelection(application, frontend, {shouldLookup: (selection) => {
+        const anchor = selection.anchorNode;
+        const element = anchor instanceof Element ? anchor : anchor?.parentElement;
+        return (selectedImage !== null && chapter.contains(selectedImage)) || (element instanceof HTMLImageElement && chapter.contains(element));
+    }});
 
     let book = null;
     let chapterIndex = 0;
@@ -144,6 +154,7 @@ await Application.main(true, async (application) => {
             const fragment = await currentBook.chapter(index);
             if (generation !== chapterGeneration || book !== currentBook) { return; }
             chapter.replaceChildren(fragment);
+            selectedImage = null;
             chapter.dataset.imageOnly = `${chapter.querySelector('img') !== null && chapter.textContent.trim() === ''}`;
             chapter.lang = book.language;
             chapter.hidden = false;
@@ -286,16 +297,28 @@ await Application.main(true, async (application) => {
         if (step && book) { event.preventDefault(); turnPage(step); }
     });
     let dragDepth = 0;
+    let internalDrag = false;
+    document.addEventListener('dragstart', (event) => {
+        if (event.target instanceof HTMLImageElement && chapter.contains(event.target)) {
+            event.preventDefault();
+            dragDepth = 0;
+            dropHint.hidden = true;
+            return;
+        }
+        internalDrag = true;
+    }, true);
+    document.addEventListener('dragend', () => { internalDrag = false; dragDepth = 0; dropHint.hidden = true; });
     document.addEventListener('dragenter', (event) => {
-        if (!event.dataTransfer?.types.includes('Files')) { return; }
+        if (internalDrag || !event.dataTransfer?.types.includes('Files')) { return; }
         event.preventDefault(); ++dragDepth; dropHint.hidden = false;
     });
     document.addEventListener('dragover', (event) => {
-        if (event.dataTransfer?.types.includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }
+        if (!internalDrag && event.dataTransfer?.types.includes('Files')) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }
     });
     document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; dropHint.hidden = true; } });
     document.addEventListener('drop', (event) => {
         event.preventDefault(); dragDepth = 0; dropHint.hidden = true;
+        if (internalDrag) { internalDrag = false; return; }
         void openFile(event.dataTransfer?.files[0]);
     });
     window.addEventListener('pagehide', (event) => {

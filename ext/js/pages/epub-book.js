@@ -54,8 +54,11 @@ export class EpubBook {
             }]));
             for (const ref of elements(packageDoc, 'itemref')) {
                 const item = manifest.get(ref.getAttribute('idref'));
-                if (!item || !['application/xhtml+xml', 'text/html'].includes(item.type)) { continue; }
-                book.spine.push({path: item.path, label: `Section ${book.spine.length + 1}`});
+                if (!item) { throw new Error('A chapter is missing from the EPUB manifest.'); }
+                if (!['application/xhtml+xml', 'text/html', 'image/svg+xml'].includes(item.type)) {
+                    throw new Error(`Unsupported chapter format: ${item.type || 'unknown'}.`);
+                }
+                book.spine.push({path: item.path, type: item.type, label: `Section ${book.spine.length + 1}`});
             }
             if (book.spine.length === 0) { throw new Error('No readable chapters were found in this EPUB.'); }
             const nav = [...manifest.values()].find((item) => item.properties.includes('nav'));
@@ -121,11 +124,7 @@ export class EpubBook {
     async image(path) {
         if (this.assets.has(path)) { return await this.assets.get(path); }
         const promise = (async () => {
-            const entry = this.files.get(path);
-            const type = IMAGE_TYPES.get(path.split('.').pop().toLowerCase());
-            if (!entry || !type || entry.encrypted || entry.uncompressedSize > 40 * 1024 * 1024) { return null; }
-            // SVG resources are decoded as images, never inserted as active markup.
-            const blob = await entry.getData(new BlobWriter(type), {useWebWorkers: false});
+            const blob = await this.imageBlob(path);
             if (this.closed) { return null; }
             const url = URL.createObjectURL(blob);
             this.urls.add(url);
@@ -135,12 +134,70 @@ export class EpubBook {
         return await promise;
     }
 
+    async imageBlob(path, ancestors = []) {
+        const entry = this.files.get(path);
+        const type = IMAGE_TYPES.get(path.split('.').pop().toLowerCase());
+        if (!entry || !type || entry.encrypted || entry.uncompressedSize > 40 * 1024 * 1024) {
+            throw new Error(`Cannot display image: ${path}`);
+        }
+        if (ancestors.includes(path) || ancestors.length >= 8) { throw new Error('Circular or excessively nested SVG image.'); }
+        if (type !== 'image/svg+xml') { return await entry.getData(new BlobWriter(type), {useWebWorkers: false}); }
+        const doc = parseXml(await this.text(path), 'an SVG image');
+        return await this.svgBlob(doc.documentElement, path, [...ancestors, path]);
+    }
+
+    async svgBlob(source, path, ancestors = [path]) {
+        const svg = source.cloneNode(true);
+        if (svg.localName !== 'svg') { throw new Error('Invalid SVG image.'); }
+        // Render in an <img>, keeping book markup out of the active page DOM.
+        // Embedded archive images become data URLs so the SVG is self-contained.
+        const safeCss = (value) => value.replace(/@import\s+[^;]+;?/gi, '').replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (match, quote, url) => url.trim().startsWith('#') ? match : 'none');
+        const pending = [];
+        for (const element of [svg, ...svg.querySelectorAll('*')]) {
+            if (element !== svg && !svg.contains(element)) { continue; }
+            if (['script', 'foreignobject', 'iframe', 'object', 'embed', 'animate', 'animatetransform', 'animatemotion', 'set'].includes(element.localName.toLowerCase())) {
+                element.remove(); continue;
+            }
+            for (const attr of [...element.attributes]) {
+                if (attr.localName.toLowerCase().startsWith('on') || attr.name === 'xml:base') { element.removeAttributeNode(attr); continue; }
+                if (attr.localName === 'href') {
+                    const href = attr.value.trim();
+                    element.removeAttributeNode(attr);
+                    if (href.startsWith('#')) { element.setAttribute('href', href); }
+                    else if (element.localName === 'image') {
+                        if (/^data:image\/(png|jpeg|gif|webp|avif);base64,/i.test(href)) { element.setAttribute('href', href); }
+                        else {
+                            pending.push((async () => {
+                                const blob = await this.imageBlob(this.resolve(href, path), ancestors);
+                                const dataUrl = await new Promise((resolve, reject) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => resolve(reader.result);
+                                    reader.onerror = () => reject(new Error('Could not read an embedded SVG image.'));
+                                    reader.readAsDataURL(blob);
+                                });
+                                element.setAttribute('href', dataUrl);
+                            })());
+                        }
+                    } else if (href && element.localName !== 'a') {
+                        throw new Error('This SVG uses an unsupported external reference.');
+                    }
+                } else if (/url\s*\(/i.test(attr.value) || attr.localName === 'style') {
+                    attr.value = safeCss(attr.value);
+                }
+            }
+            if (element.localName === 'style') { element.textContent = safeCss(element.textContent || ''); }
+        }
+        await Promise.all(pending);
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        return new Blob([new XMLSerializer().serializeToString(svg)], {type: 'image/svg+xml'});
+    }
+
     async chapter(index) {
         const path = this.spine[index].path;
         const markup = await this.text(path);
         let parsed = new DOMParser().parseFromString(markup, 'application/xhtml+xml');
         if (elements(parsed, 'parsererror').length > 0) { parsed = new DOMParser().parseFromString(markup, 'text/html'); }
-        const body = elements(parsed, 'body')[0];
+        const body = this.spine[index].type === 'image/svg+xml' ? parsed.documentElement : elements(parsed, 'body')[0];
         if (!body) { throw new Error('This chapter has no readable content.'); }
         const fragment = document.createDocumentFragment();
         const pending = [];
@@ -149,12 +206,8 @@ export class EpubBook {
             if (node.nodeType !== Node.ELEMENT_NODE) { return; }
             const name = node.localName.toLowerCase();
             if (DROP_TAGS.has(name)) { return; }
-            // EPUB covers frequently wrap their bitmap in an SVG image element.
             if (name === 'svg') {
-                for (const image of elements(node, 'image')) {
-                    const href = image.getAttribute('href') || image.getAttribute('xlink:href');
-                    if (href) { appendImage(href, image.getAttribute('aria-label') || '', target); }
-                }
+                appendImage(null, node.getAttribute('aria-label') || '', target, node);
                 return;
             }
             if (!ALLOWED_TAGS.has(name)) {
@@ -201,19 +254,34 @@ export class EpubBook {
             target.appendChild(element);
             for (const child of node.childNodes) { copy(child, element); }
         };
-        const appendImage = (href, alt, target) => {
+        const appendImage = (href, alt, target, svg = null) => {
             const image = document.createElement('img');
+            image.draggable = false;
             image.alt = alt;
             image.decoding = 'async';
             target.appendChild(image);
-            try {
-                const imagePath = this.resolve(href, path);
-                pending.push(this.image(imagePath).then((url) => {
-                    if (url) { image.src = url; } else if (!alt) { image.remove(); }
-                }).catch(() => { if (!alt) { image.remove(); } }));
-            } catch (error) { if (!alt) { image.remove(); } }
+            const fail = (error) => {
+                const message = document.createElement('p');
+                message.className = 'epub-image-error';
+                message.setAttribute('role', 'alert');
+                message.textContent = `Image could not be displayed${alt ? ` (${alt})` : ''}. ${error instanceof Error ? error.message : ''}`;
+                image.replaceWith(message);
+            };
+            image.addEventListener('error', () => fail(new Error('The image could not be decoded.')), {once: true});
+            pending.push((async () => {
+                let url;
+                if (svg) {
+                    const blob = await this.svgBlob(svg, path);
+                    if (this.closed) { return; }
+                    url = URL.createObjectURL(blob);
+                    this.urls.add(url);
+                } else { url = await this.image(this.resolve(href, path)); }
+                if (url) { image.src = url; }
+            })().catch(fail));
         };
-        for (const child of body.childNodes) { copy(child, fragment); }
+        if (this.spine[index].type === 'image/svg+xml' && body.localName !== 'svg') { throw new Error('This SVG chapter is invalid.'); }
+        if (this.spine[index].type === 'image/svg+xml') { copy(body, fragment); }
+        else { for (const child of body.childNodes) { copy(child, fragment); } }
         await Promise.all(pending);
         return fragment;
     }
