@@ -52,6 +52,9 @@ await Application.main(true, async (application) => {
     });
     await frontend.prepare();
     prepareImageViewerSelection(application, frontend);
+    viewer.addEventListener('dragstart', (event) => {
+        if (event.target instanceof HTMLImageElement) { event.preventDefault(); }
+    });
 
     /** @type {HTMLElement[]} */
     let items = [];
@@ -107,6 +110,7 @@ await Application.main(true, async (application) => {
      */
     const createImage = (file, previousImage = null) => {
         const image = document.createElement('img');
+        image.draggable = false;
         const url = URL.createObjectURL(file);
         imageUrls.push(url);
         // Reserve the image's aspect ratio while the replacement loads.

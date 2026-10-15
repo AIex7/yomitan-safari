@@ -92,6 +92,7 @@ body {
     background: #ffffff;
 }
 img {
+    -webkit-user-drag: none;
     display: block;
     width: auto;
     height: auto;
