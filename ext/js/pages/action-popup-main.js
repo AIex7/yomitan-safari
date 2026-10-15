@@ -60,6 +60,9 @@ class DisplayController {
             const imageViewer = document.querySelector('.action-image-viewer');
             if (imageViewer instanceof HTMLElement) { imageViewer.hidden = false; }
             this._setupButtonEvents('.action-open-image-viewer', null, chrome.runtime.getURL('/image-viewer.html'));
+            const epubReader = document.querySelector('.action-epub-reader');
+            if (epubReader instanceof HTMLElement) { epubReader.hidden = false; }
+            this._setupButtonEvents('.action-open-epub-reader', null, chrome.runtime.getURL('/epub-reader.html'));
             this._setupMorphmanButton();
         }
         this._hotkeyUtil.os = os;
