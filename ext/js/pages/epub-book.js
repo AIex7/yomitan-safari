@@ -121,6 +121,30 @@ export class EpubBook {
         return await entry.getData(new TextWriter(), {useWebWorkers: false});
     }
 
+    async characterCounts(onProgress = () => {}) {
+        const counts = [];
+        for (const [index, item] of this.spine.entries()) {
+            const markup = await this.text(item.path);
+            const parsed = new DOMParser().parseFromString(markup, 'application/xhtml+xml');
+            const root = elements(parsed, 'parsererror').length > 0 ? new DOMParser().parseFromString(markup, 'text/html') : parsed;
+            const content = item.type === 'image/svg+xml' ? root.documentElement : elements(root, 'body')[0];
+            let count = 0;
+            if (content) {
+                const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+                while (walker.nextNode()) {
+                    const node = walker.currentNode;
+                    if (node.parentElement?.closest([...DROP_TAGS].join(','))) { continue; }
+                    count += Array.from(node.nodeValue || '').length;
+                }
+            }
+            // Image-only/scanned chapters have no selectable text to count. Give
+            // each such reading section one unit so progress can still advance.
+            counts.push(count > 0 ? count : 1);
+            onProgress(index + 1, this.spine.length);
+        }
+        return counts;
+    }
+
     async image(path) {
         if (this.assets.has(path)) { return await this.assets.get(path); }
         const promise = (async () => {

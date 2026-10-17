@@ -46,6 +46,8 @@ await Application.main(true, async (application) => {
     }});
 
     let book = null;
+    let characterCounts = null;
+    let characterCountError = false;
     let chapterIndex = 0;
     let opening = false;
     let loadingChapter = false;
@@ -81,8 +83,20 @@ await Application.main(true, async (application) => {
         const pageSize = Math.max(1, vertical() ? area.clientWidth : area.clientHeight);
         const pages = Math.max(1, Math.ceil((maximum + pageSize) / pageSize));
         const currentPage = maximum > 0 ? Math.min(pages, Math.ceil(offset / pageSize) + 1) : 1;
-        position.textContent = `Section ${chapterIndex + 1} of ${book.spine.length} · ${Math.round(fraction() * 100)}%`;
-        position.title = `Approximate page ${currentPage} of ${pages} in this section`;
+        if (characterCountError) {
+            position.textContent = 'Progress unavailable';
+            position.title = 'Could not calculate character progress for this book.';
+        } else if (characterCounts === null) {
+            position.textContent = 'Counting book text…';
+            position.title = 'Calculating character progress for the whole book';
+        } else {
+            const total = characterCounts.reduce((sum, value) => sum + value, 0);
+            const before = characterCounts.slice(0, chapterIndex).reduce((sum, value) => sum + value, 0);
+            const current = Math.round(characterCounts[chapterIndex] * fraction());
+            const completed = Math.min(total, before + current);
+            position.textContent = `${total > 0 ? Math.floor(completed / total * 100) : 0}% · ${completed.toLocaleString()} / ${total.toLocaleString()} chars`;
+            position.title = `Whole-book character progress. About page ${currentPage} of ${pages} in this section.`;
+        }
         previous.disabled = opening || loadingChapter || (chapterIndex === 0 && atStart);
         next.disabled = opening || loadingChapter || (chapterIndex === book.spine.length - 1 && atEnd);
         chapterSelect.disabled = opening || loadingChapter;
@@ -221,6 +235,8 @@ await Application.main(true, async (application) => {
             if (generation !== openGeneration) { await opened.close(); return; }
             const oldBook = book;
             book = opened;
+            characterCounts = null;
+            characterCountError = false;
             chapterIndex = 0;
             title.textContent = book.title;
             title.title = book.title;
@@ -229,6 +245,20 @@ await Application.main(true, async (application) => {
             buildContents();
             updateAppearance();
             opening = false;
+            void book.characterCounts((complete, total) => {
+                if (book !== opened) { return; }
+                status.textContent = `Counting book text (${complete}/${total} sections)…`;
+            }).then((counts) => {
+                if (book !== opened) { return; }
+                characterCounts = counts;
+                if (status.textContent.startsWith('Counting book text')) { status.textContent = ''; }
+                updatePosition();
+            }).catch((error) => {
+                if (book !== opened) { return; }
+                console.warn('[Yomitan][EPUB] Could not count all book text', error);
+                characterCountError = true;
+                updatePosition();
+            });
             await showChapter(0);
             if (oldBook) { await oldBook.close(); }
         } catch (error) {
