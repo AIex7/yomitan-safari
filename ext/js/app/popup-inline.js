@@ -834,12 +834,12 @@ export class PopupInline extends EventDispatcher {
     z-index: 1;
     box-sizing: border-box;
     height: 100% !important;
-    border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+    border: 1px solid color-mix(in srgb, CanvasText 24%, transparent);
     border-radius: 22px;
-    background: color-mix(in srgb, Canvas 62%, transparent);
-    -webkit-backdrop-filter: blur(42px) saturate(1.8);
-    backdrop-filter: blur(42px) saturate(1.8);
-    box-shadow: 0 24px 70px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .84);
+    background: color-mix(in srgb, Canvas 38%, transparent);
+    -webkit-backdrop-filter: blur(36px) saturate(1.9);
+    backdrop-filter: blur(36px) saturate(1.9);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .22), inset 0 1px 0 rgba(255, 255, 255, .68), inset 0 -1px 0 rgba(255, 255, 255, .18);
     color: CanvasText;
     width: 100%;
     overflow: hidden !important;
@@ -850,7 +850,7 @@ export class PopupInline extends EventDispatcher {
     z-index: 0;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(145deg, rgba(255, 255, 255, .48), rgba(255, 255, 255, .08) 34%, rgba(255, 255, 255, .18) 72%, rgba(255, 255, 255, .34));
+    background: linear-gradient(145deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .035) 32%, rgba(255, 255, 255, .10) 68%, rgba(255, 255, 255, .25));
 }
 .content {
     display: block;
@@ -965,10 +965,10 @@ export class PopupInline extends EventDispatcher {
 @media (prefers-color-scheme: dark) {
     .content-outer {
         color: CanvasText;
-        background: color-mix(in srgb, Canvas 58%, transparent);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 255, 255, .24);
+        background: color-mix(in srgb, Canvas 32%, transparent);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(255, 255, 255, .08);
     }
-    .content-outer::before { background: linear-gradient(145deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, .02) 34%, rgba(255, 255, 255, .07) 72%, rgba(255, 255, 255, .14)); }
+    .content-outer::before { background: linear-gradient(145deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .015) 32%, rgba(255, 255, 255, .05) 68%, rgba(255, 255, 255, .13)); }
     .entry + .entry { border-top-color: color-mix(in srgb, CanvasText 18%, transparent); }
 }
 `;
