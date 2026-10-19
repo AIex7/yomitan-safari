@@ -986,13 +986,16 @@ export class PopupInline extends EventDispatcher {
     line-height: 1;
     vertical-align: baseline;
 }
+.headword-term .inline-bipositional-ruby ruby > rt,
+.headword-term .inline-alternate-reading {
+    font-size: 0.6em;
+}
 .headword-term .inline-alternate-reading {
     position: absolute;
     left: 50%;
     bottom: -1.16em;
     transform: translateX(-50%);
     color: var(--headword-current-furigana-text-color);
-    font-size: 0.5em;
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
