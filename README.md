@@ -54,6 +54,25 @@ This extension adds several features on top of the original Yomitan:
 </table>
 
 
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="https://github.com/user-attachments/assets/55804c49-eb73-4114-9cab-9a90da7c77b7" width="100%" alt="Revised UI with multiple readings" />
+      <br />
+      <b>Revised UI</b>
+    </td>
+    <td width="50%"></td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      Alternate readings are displayed below the word.
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
+
+
+
 
 ## Building
 
