@@ -397,12 +397,14 @@ export class PopupInline extends EventDispatcher {
         const dictionaryInfo = await this._getDictionaryInfo();
         if (this._renderToken !== renderToken) { return; }
         const ankiEntries = [];
+        const termEntryNodes = [];
         for (const entry of dictionaryEntries) {
             const node = (
                 entry.type === 'kanji' ?
                 displayGenerator.createKanjiEntry(entry, dictionaryInfo) :
                 displayGenerator.createTermEntry(entry, dictionaryInfo)
             );
+            if (entry.type !== 'kanji') { termEntryNodes.push(node); }
             // The native dictionary style shows the full definition without a
             // collapsed “more” state; keep each dictionary's complete content.
             for (const element of node.querySelectorAll('.definition-item-inner, .kanji-glyph-data')) {
@@ -414,10 +416,79 @@ export class PopupInline extends EventDispatcher {
             ankiEntries.push({entry, node});
             fragment.appendChild(node);
         }
+        this._combineFirstHeadwordReadings(termEntryNodes);
         if (this._renderToken !== renderToken) { return; }
         contentRoot.replaceChildren(fragment);
         await displayContentManager.executeMediaRequests();
         return ankiEntries;
+    }
+
+    _combineFirstHeadwordReadings(entryNodes) {
+        let firstHeadword = null;
+        let firstTerm = '';
+        const matchingHeadwords = [];
+        const getTerm = (headword) => {
+            const term = headword.querySelector('.headword-term');
+            if (term === null) { return ''; }
+            const clone = term.cloneNode(true);
+            for (const rubyText of clone.querySelectorAll('rt')) { rubyText.remove(); }
+            return clone.textContent.trim();
+        };
+        const toHiragana = (reading) => Array.from(reading, (character) => {
+            const codePoint = character.codePointAt(0);
+            return codePoint >= 0x30a1 && codePoint <= 0x30f6 ? String.fromCodePoint(codePoint - 0x60) : character;
+        }).join('');
+
+        for (const entryNode of entryNodes) {
+            const headwords = entryNode.querySelectorAll('.headword-list > .headword');
+            if (headwords.length === 0) { continue; }
+            if (firstHeadword === null) {
+                firstHeadword = headwords[0];
+                firstTerm = getTerm(firstHeadword);
+            }
+            for (const headword of headwords) {
+                if (getTerm(headword) !== firstTerm) { continue; }
+                const reading = toHiragana(headword.querySelector('.headword-reading')?.textContent.trim() ?? '');
+                if (reading.length === 0) { continue; }
+                matchingHeadwords.push({headword, reading});
+            }
+        }
+        if (firstHeadword === null) { return; }
+
+        const firstReading = matchingHeadwords.find(({headword}) => headword === firstHeadword)?.reading;
+        const alternateHeadword = matchingHeadwords.find(({headword, reading}) => headword !== firstHeadword && reading !== firstReading)?.headword;
+        if (alternateHeadword === undefined) { return; }
+
+        const firstTermNode = firstHeadword.querySelector('.headword-term');
+        const firstRuby = firstTermNode?.querySelectorAll('ruby');
+        if (!firstRuby || firstRuby.length === 0) { return; }
+        const alternateRuby = alternateHeadword.querySelectorAll('.headword-term ruby');
+        const getRubyBase = (ruby) => {
+            const clone = ruby.cloneNode(true);
+            for (const rubyText of clone.querySelectorAll('rt')) { rubyText.remove(); }
+            return clone.textContent.trim();
+        };
+        const getRubyReading = (ruby) => toHiragana(ruby.querySelector('rt')?.textContent.trim() ?? '');
+
+        for (let i = 0; i < firstRuby.length; ++i) {
+            const ruby = firstRuby[i];
+            const otherRuby = alternateRuby[i];
+            if (otherRuby === undefined || getRubyBase(otherRuby) !== getRubyBase(ruby)) { continue; }
+            const alternateReading = getRubyReading(otherRuby);
+            if (alternateReading.length === 0 || alternateReading === getRubyReading(ruby)) { continue; }
+
+            const combinedRuby = document.createElement('span');
+            combinedRuby.className = 'inline-bipositional-ruby';
+            const alternateReadingNode = document.createElement('span');
+            alternateReadingNode.className = 'inline-alternate-reading';
+            alternateReadingNode.textContent = alternateReading;
+            ruby.replaceWith(combinedRuby);
+            combinedRuby.append(ruby, alternateReadingNode);
+        }
+
+        for (const {headword} of matchingHeadwords) {
+            if (headword !== firstHeadword) { headword.hidden = true; }
+        }
     }
 
     async _prepareAnkiActions(entries, displayDetails, renderToken) {
@@ -904,6 +975,28 @@ export class PopupInline extends EventDispatcher {
 }
 .entry-header { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
 .headword-list { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.headword-term .headword-kanji-link {
+    text-decoration: none;
+}
+.headword-term .inline-bipositional-ruby {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 0.58em;
+    line-height: 1;
+    vertical-align: baseline;
+}
+.headword-term .inline-alternate-reading {
+    position: absolute;
+    left: 50%;
+    bottom: -1.16em;
+    transform: translateX(-50%);
+    color: var(--headword-current-furigana-text-color);
+    font-size: 0.5em;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+}
 .headword { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
 .icon[data-icon="play-audio"] { filter: grayscale(1); }
 .definition-item-inner.collapsible.collapsed,
