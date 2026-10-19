@@ -346,7 +346,7 @@ export class PopupInline extends EventDispatcher {
         let top;
         if (sourceRects.length > 0) {
             const source = this._getBoundingSourceRect(sourceRects);
-            left = source.left + this._horizontalOffset;
+            left = (source.left + source.right) / 2 - popupRect.width / 2 + this._horizontalOffset;
             top = source.bottom + this._verticalOffset;
             if (top + popupRect.height > window.innerHeight - 8) {
                 top = source.top - popupRect.height - this._verticalOffset;
@@ -963,13 +963,26 @@ export class PopupInline extends EventDispatcher {
     color: var(--text-color);
 }
 @media (prefers-color-scheme: dark) {
+    :host {
+        --background-color: #242426;
+        --text-color: #f5f5f7;
+        --reason-text-color: rgba(245, 245, 247, .68);
+        --text-color-light1: rgba(245, 245, 247, .76);
+        --text-color-light2: rgba(245, 245, 247, .66);
+        --text-color-light3: rgba(245, 245, 247, .56);
+        --text-color-light4: rgba(245, 245, 247, .46);
+        --light-border-color: rgba(255, 255, 255, .14);
+        --medium-border-color: rgba(255, 255, 255, .22);
+        --dark-border-color: rgba(255, 255, 255, .34);
+    }
     .content-outer {
         color: CanvasText;
-        background: color-mix(in srgb, Canvas 32%, transparent);
+        background: rgba(34, 34, 37, .78);
         box-shadow: 0 24px 70px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(255, 255, 255, .08);
     }
-    .content-outer::before { background: linear-gradient(145deg, rgba(255, 255, 255, .22), rgba(255, 255, 255, .015) 32%, rgba(255, 255, 255, .05) 68%, rgba(255, 255, 255, .13)); }
-    .entry + .entry { border-top-color: color-mix(in srgb, CanvasText 18%, transparent); }
+    .content-outer::before { background: linear-gradient(145deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .008) 32%, rgba(255, 255, 255, .025) 68%, rgba(255, 255, 255, .08)); }
+    .entry + .entry { border-top-color: rgba(255, 255, 255, .18); }
+    .tag[data-category="dictionary"] { border-bottom-color: rgba(255, 255, 255, .18); }
 }
 `;
     }
