@@ -1,7 +1,7 @@
 # Yomitan
 
 
-## Features
+## Screenshots
 
 This extension adds several features on top of the original Yomitan:
 
