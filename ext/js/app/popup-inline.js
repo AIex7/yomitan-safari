@@ -509,6 +509,13 @@ export class PopupInline extends EventDispatcher {
     }
 
     async _prepareAnkiActions(entries, displayDetails, renderToken) {
+        try {
+            const isAnkiConnected = await this._application.api.isAnkiConnected();
+            if (this._renderToken !== renderToken || !isAnkiConnected) { return; }
+        } catch (error) {
+            console.warn('[Yomitan][Safari][InlinePopup][Anki] Availability check failed; hiding Anki buttons', error);
+            return;
+        }
         for (const {entry, node} of entries) {
             if (this._renderToken !== renderToken) { return; }
             try {
