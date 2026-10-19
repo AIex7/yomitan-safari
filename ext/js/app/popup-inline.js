@@ -44,22 +44,23 @@ export class PopupInline extends EventDispatcher {
         this._container.style.zIndex = '2147483647';
         this._container.style.left = '0';
         this._container.style.top = '0';
-        this._container.style.width = '300px';
-        this._container.style.maxWidth = '300px';
-        this._container.style.maxHeight = '400px';
-        this._container.style.overflow = 'auto';
+        this._container.style.width = '560px';
+        this._container.style.maxWidth = '560px';
+        this._container.style.maxHeight = '520px';
+        this._container.style.overflow = 'visible';
         this._container.style.boxSizing = 'border-box';
-        this._container.style.border = '1px solid rgba(0, 0, 0, 0.18)';
-        this._container.style.borderRadius = '10px';
-        this._container.style.background = '#ffffff';
-        this._container.style.color = '#111827';
-        this._container.style.boxShadow = '0 16px 40px rgba(0, 0, 0, 0.25)';
-        this._container.style.padding = '12px';
+        this._container.style.border = '0';
+        this._container.style.borderRadius = '0';
+        this._container.style.background = 'transparent';
+        this._container.style.color = 'CanvasText';
+        this._container.style.colorScheme = 'light dark';
+        this._container.style.boxShadow = 'none';
+        this._container.style.padding = '0';
         this._container.style.font = '14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         this._container.style.wordBreak = 'break-word';
         this._container.style.display = 'none';
         this._container.style.opacity = '0';
-        this._container.style.transition = 'opacity 180ms ease';
+        this._container.style.transition = 'opacity 120ms ease';
         this._container.style.whiteSpace = 'normal';
         this._container.style.textAlign = 'left';
         this._container.style.userSelect = 'text';
@@ -255,6 +256,7 @@ export class PopupInline extends EventDispatcher {
         this._initialHeight = height;
         this._container.style.width = `${width}px`;
         this._container.style.maxWidth = `${width}px`;
+        this._container.style.height = `${height}px`;
         this._container.style.maxHeight = `${height}px`;
         return true;
     }
@@ -331,10 +333,11 @@ export class PopupInline extends EventDispatcher {
     }
 
     _position(sourceRects) {
-        const width = Math.min(this._initialWidth, Math.max(160, window.innerWidth - 16));
-        const height = Math.min(this._initialHeight, Math.max(120, window.innerHeight - 16));
+        const width = Math.min(this._initialWidth, 600, Math.max(1, window.innerWidth - 24));
+        const height = Math.min(this._initialHeight, 520, Math.max(1, window.innerHeight - 32));
         this._container.style.width = `${width}px`;
         this._container.style.maxWidth = `${width}px`;
+        this._container.style.height = `${height}px`;
         this._container.style.maxHeight = `${height}px`;
         this._container.style.display = 'block';
         this._container.hidden = false;
@@ -394,12 +397,17 @@ export class PopupInline extends EventDispatcher {
         const dictionaryInfo = await this._getDictionaryInfo();
         if (this._renderToken !== renderToken) { return; }
         const ankiEntries = [];
-        for (const entry of dictionaryEntries.slice(0, 8)) {
+        for (const entry of dictionaryEntries) {
             const node = (
                 entry.type === 'kanji' ?
                 displayGenerator.createKanjiEntry(entry, dictionaryInfo) :
                 displayGenerator.createTermEntry(entry, dictionaryInfo)
             );
+            // The native dictionary style shows the full definition without a
+            // collapsed “more” state; keep each dictionary's complete content.
+            for (const element of node.querySelectorAll('.definition-item-inner, .kanji-glyph-data')) {
+                element.classList.remove('collapsible', 'collapsed', 'collapse-test');
+            }
             if (this._options !== null) {
                 this._audio.attach(entry, node, this._options, () => this._renderToken === renderToken && this._visible);
             }
@@ -787,21 +795,69 @@ export class PopupInline extends EventDispatcher {
 :host {
     display: block;
     all: initial;
-    contain: content;
+    contain: layout style;
+    color-scheme: light dark;
+    --font-size-no-units: 15;
+    --font-size: 15px;
+    --line-height-no-units: 22;
+    --headword-font-size-no-units: 2.05;
+    --entry-vertical-padding: 0.8em;
+    --entry-horizontal-padding: 0.25em;
+    --query-horizontal-padding: 0.25em;
+    --accent-color: #5c5c60;
+    --background-color: Canvas;
+    --text-color: CanvasText;
+    --reason-text-color: color-mix(in srgb, CanvasText 58%, transparent);
+    --text-color-light1: color-mix(in srgb, CanvasText 68%, transparent);
+    --text-color-light2: color-mix(in srgb, CanvasText 58%, transparent);
+    --text-color-light3: color-mix(in srgb, CanvasText 48%, transparent);
+    --text-color-light4: color-mix(in srgb, CanvasText 40%, transparent);
+    --light-border-color: color-mix(in srgb, CanvasText 14%, transparent);
+    --medium-border-color: color-mix(in srgb, CanvasText 22%, transparent);
+    --dark-border-color: color-mix(in srgb, CanvasText 36%, transparent);
+    --accent-color: #5c5c60;
+    --tag-default-background-color: #77777b;
+    --tag-name-background-color: #77777b;
+    --tag-expression-background-color: #77777b;
+    --tag-popular-background-color: #77777b;
+    --tag-frequent-background-color: #77777b;
+    --tag-archaism-background-color: #77777b;
+    --tag-dictionary-background-color: #77777b;
+    --tag-frequency-background-color: #77777b;
+    --tag-part-of-speech-background-color: #77777b;
+    --tag-search-background-color: #77777b;
+    --tag-pronunciation-dictionary-background-color: #77777b;
 }
 .content-outer {
     display: block;
-    background: var(--background-color);
-    color: var(--text-color);
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    height: 100% !important;
+    border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+    border-radius: 22px;
+    background: color-mix(in srgb, Canvas 62%, transparent);
+    -webkit-backdrop-filter: blur(42px) saturate(1.8);
+    backdrop-filter: blur(42px) saturate(1.8);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .84);
+    color: CanvasText;
     width: 100%;
-    height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
+}
+.content-outer::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .48), rgba(255, 255, 255, .08) 34%, rgba(255, 255, 255, .18) 72%, rgba(255, 255, 255, .34));
 }
 .content {
     display: block;
-    position: static !important;
-    height: auto !important;
-    overflow: visible !important;
+    position: relative !important;
+    z-index: 1;
+    height: 100% !important;
+    overflow: hidden !important;
 }
 .content-scroll {
     position: static !important;
@@ -811,9 +867,11 @@ export class PopupInline extends EventDispatcher {
     bottom: auto !important;
     display: block !important;
     overflow-x: hidden !important;
-    overflow-y: auto !important;
+    overflow-y: scroll !important;
+    box-sizing: border-box !important;
+    padding: 14px 16px !important;
     max-height: none !important;
-    height: auto !important;
+    height: 100% !important;
 }
 .content-body {
     position: static !important;
@@ -831,6 +889,7 @@ export class PopupInline extends EventDispatcher {
     margin: 0;
     border: 0;
     box-shadow: none;
+    border-radius: 0;
     content-visibility: visible !important;
     contain: none !important;
     contain-intrinsic-height: auto !important;
@@ -841,11 +900,38 @@ export class PopupInline extends EventDispatcher {
     visibility: visible;
 }
 .entry + .entry {
-    border-top: 1px solid var(--light-border-color);
+    border-top: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+}
+.entry-header { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.headword-list { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+.headword { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
+.icon[data-icon="play-audio"] { filter: grayscale(1); }
+.definition-item-inner.collapsible.collapsed,
+.kanji-glyph-data.collapsible.collapsed {
+    max-height: none !important;
+    overflow: visible !important;
 }
 .headword-list .headword-details > .action-button[data-action="play-audio"]:not([hidden]) {
     display: inline-block !important;
     position: static !important;
+}
+.tag[data-category="dictionary"] {
+    display: flex;
+    width: 100%;
+    min-height: 0;
+    margin: 0.65em 0 0.45em;
+    padding: 0 0 0.3em;
+    border-bottom: 1px solid color-mix(in srgb, CanvasText 16%, transparent);
+}
+.tag[data-category="dictionary"] > .tag-label {
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: color-mix(in srgb, CanvasText 62%, transparent);
+}
+.tag[data-category="dictionary"] .tag-label-content {
+    font-size: 0.9em;
+    font-weight: 600;
 }
 .entry-current-indicator,
 .entry-current-indicator-icon,
@@ -875,6 +961,15 @@ export class PopupInline extends EventDispatcher {
 .inline-message {
     padding: 0.72em;
     color: var(--text-color);
+}
+@media (prefers-color-scheme: dark) {
+    .content-outer {
+        color: CanvasText;
+        background: color-mix(in srgb, Canvas 58%, transparent);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255, 255, 255, .24);
+    }
+    .content-outer::before { background: linear-gradient(145deg, rgba(255, 255, 255, .20), rgba(255, 255, 255, .02) 34%, rgba(255, 255, 255, .07) 72%, rgba(255, 255, 255, .14)); }
+    .entry + .entry { border-top-color: color-mix(in srgb, CanvasText 18%, transparent); }
 }
 `;
     }
