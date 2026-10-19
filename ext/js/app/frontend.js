@@ -122,6 +122,8 @@ export class Frontend {
         this._safariLookupPending = false;
         /** @type {boolean} */
         this._safariLookupCancelled = false;
+        /** @type {boolean} */
+        this._safariScrollLookupSuppressed = false;
         /* eslint-disable @stylistic/no-multi-spaces */
         /** @type {import('application').ApiMap} */
         this._runtimeApiMap = createApiMap([
@@ -448,6 +450,7 @@ export class Frontend {
         if (!this._isSafariInlinePopupMode() || e.repeat || this._options === null) { return; }
         const key = this._options.scanning.safariLookupKey;
         if (e.key !== key && e.code !== key) { return; }
+        this._safariScrollLookupSuppressed = false;
         if (key === 'F17') { e.preventDefault(); }
         void this._lookupSafariText();
     }
@@ -458,6 +461,7 @@ export class Frontend {
     _onSafariMouseMove(e) {
         if (!this._isSafariInlinePopupMode()) { return; }
         this._safariPointerPosition = {x: e.clientX, y: e.clientY};
+        if (this._safariScrollLookupSuppressed) { return; }
         if (this._options !== null && this._options.scanning.safariLookupKey === 'Shift' && e.shiftKey) {
             void this._lookupSafariText();
         }
@@ -503,6 +507,7 @@ export class Frontend {
         if (this._isSafariInlinePopupMode()) {
             const container = this._popup !== null ? this._popup.container : null;
             if (container !== null && e.target instanceof Node && container.contains(e.target)) { return; }
+            this._safariScrollLookupSuppressed = true;
             this._safariLookupCancelled = true;
             this._clearSelection(true);
             return;
@@ -536,6 +541,7 @@ export class Frontend {
      */
     _onVisualViewportScroll() {
         if (this._isSafariInlinePopupMode()) {
+            this._safariScrollLookupSuppressed = true;
             this._safariLookupCancelled = true;
             this._clearSelection(true);
             return;
