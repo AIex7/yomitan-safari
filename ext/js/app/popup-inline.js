@@ -418,6 +418,9 @@ export class PopupInline extends EventDispatcher {
                 displayGenerator.createKanjiEntry(entry, dictionaryInfo) :
                 displayGenerator.createTermEntry(entry, dictionaryInfo)
             );
+            for (const icon of node.querySelectorAll('.action-icon[data-icon="play-audio"]')) {
+                icon.replaceWith(this._createInlineSvgIcon('audio'));
+            }
             if (entry.type !== 'kanji') { termEntryNodes.push(node); }
             // The native dictionary style shows the full definition without a
             // collapsed “more” state; keep each dictionary's complete content.
@@ -565,7 +568,7 @@ export class PopupInline extends EventDispatcher {
             buttonContainer.className = 'action-button-container';
             buttonContainer.dataset.cardFormatIndex = `${cardFormatIndex}`;
 
-            const saveButton = this._createInlineActionButton(cardFormat.icon, `Add ${cardFormat.name} note`);
+            const saveButton = this._createInlineActionButton('anki-add', `Add ${cardFormat.name} note`);
             saveButton.dataset.action = 'save-note';
             saveButton.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -598,7 +601,7 @@ export class PopupInline extends EventDispatcher {
                     const noteId = await this._application.api.addAnkiNote(noteToSave);
                     console.log('[Yomitan][Safari][InlinePopup][Anki] addAnkiNote', {noteId, cardFormat: cardFormat.name});
                     if (typeof noteId === 'number' && noteId > 0) {
-                        const viewButton = this._createInlineActionButton('view-note', `View ${cardFormat.name} note`);
+                        const viewButton = this._createInlineActionButton('anki-view', `View ${cardFormat.name} note`);
                         viewButton.dataset.action = 'view-note';
                         viewButton.addEventListener('click', async (event) => {
                             event.preventDefault();
@@ -645,11 +648,58 @@ export class PopupInline extends EventDispatcher {
         button.type = 'button';
         button.className = 'action-button';
         button.title = title;
-        const iconNode = document.createElement('span');
-        iconNode.className = 'action-icon icon color-icon';
-        iconNode.dataset.icon = icon;
+        const iconNode = this._createInlineSvgIcon(icon === 'anki-view' ? 'note' : 'note-add');
+        if (icon !== 'anki-view') { iconNode.classList.add('inline-popup-svg-icon-add'); }
         button.appendChild(iconNode);
         return button;
+    }
+
+    _createInlineSvgIcon(type) {
+        const namespace = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(namespace, 'svg');
+        svg.classList.add('inline-popup-svg-icon');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        const addPath = (path, attributes = {}) => {
+            const element = document.createElementNS(namespace, 'path');
+            element.setAttribute('d', path);
+            for (const [name, value] of Object.entries(attributes)) { element.setAttribute(name, value); }
+            svg.appendChild(element);
+        };
+
+        if (type === 'audio') {
+            addPath('M4 9v6h4l5 4V5L8 9H4Z', {fill: 'currentColor'});
+            addPath('M16 9a5 5 0 0 1 0 6M18.5 6.5a8.5 8.5 0 0 1 0 11', {
+                fill: 'none',
+                stroke: 'currentColor',
+                'stroke-width': '1.8',
+                'stroke-linecap': 'round',
+            });
+        } else {
+            addPath('M6 3.75h8l4 4v12.5H6a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z', {
+                fill: 'none',
+                stroke: 'currentColor',
+                'stroke-width': '1.7',
+                'stroke-linejoin': 'round',
+            });
+            addPath('M14 3.9v4h3.8M8 11h8M8 14.5h8', {
+                fill: 'none',
+                stroke: 'currentColor',
+                'stroke-width': '1.7',
+                'stroke-linecap': 'round',
+                'stroke-linejoin': 'round',
+            });
+            if (type === 'note-add') {
+                addPath('M18.5 15.5v6M15.5 18.5h6', {
+                    fill: 'none',
+                    stroke: 'currentColor',
+                    'stroke-width': '1.8',
+                    'stroke-linecap': 'round',
+                });
+            }
+        }
+        return svg;
     }
 
     /**
@@ -666,7 +716,7 @@ export class PopupInline extends EventDispatcher {
     }
 
     _createInlineViewNoteButton(cardFormat, noteIds, noteGuiMode) {
-        const viewButton = this._createInlineActionButton('view-note', `View added ${cardFormat.name} note`);
+        const viewButton = this._createInlineActionButton('anki-view', `View added ${cardFormat.name} note`);
         viewButton.dataset.action = 'view-note';
         viewButton.addEventListener('click', async (e) => {
             e.preventDefault();
@@ -1012,7 +1062,18 @@ export class PopupInline extends EventDispatcher {
     pointer-events: none;
 }
 .headword { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', serif; }
-.icon[data-icon="play-audio"] { filter: grayscale(1); }
+.headword-list-tag-list > .tag[data-category="search"] {
+    display: none !important;
+}
+.inline-popup-svg-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    color: color-mix(in srgb, CanvasText 78%, transparent);
+}
+.inline-popup-svg-icon-add {
+    color: #34a853;
+}
 .definition-item-inner.collapsible.collapsed,
 .kanji-glyph-data.collapsible.collapsed {
     max-height: none !important;
