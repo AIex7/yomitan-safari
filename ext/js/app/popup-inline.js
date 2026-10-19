@@ -209,15 +209,21 @@ export class PopupInline extends EventDispatcher {
 
     async showContent(details, displayDetails) {
         const optionsContext = this._normalizeOptionsContext(details.optionsContext);
+        this.stopHideDelayed();
+        this._visible = false;
+        this.prepare();
+        this._audio.stop();
+        // Keep both first-time rendering and subsequent lookups hidden until
+        // the new content and popup geometry are ready to present together.
+        this._container.style.transition = 'none';
+        this._container.style.opacity = '0';
+        this._container.style.pointerEvents = 'none';
         if (this._optionsContext === null) {
             await this.setOptionsContext(optionsContext);
         } else if (JSON.stringify(this._optionsContext) !== JSON.stringify(optionsContext)) {
             await this.setOptionsContext(optionsContext);
         }
 
-        this.stopHideDelayed();
-        this.prepare();
-        this._audio.stop();
         const renderToken = {};
         this._renderToken = renderToken;
         const ankiEntries = await this._render(displayDetails, renderToken);
@@ -225,10 +231,18 @@ export class PopupInline extends EventDispatcher {
         await this._ensurePositionLoaded();
         if (this._renderToken !== renderToken) { return; }
         this._position(details.sourceRects);
-        this._visible = true;
         this._container.hidden = false;
         this._container.style.display = 'block';
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (this._renderToken !== renderToken) { return; }
+        this._visible = true;
         this._container.style.opacity = '1';
+        this._container.style.pointerEvents = '';
+        requestAnimationFrame(() => {
+            if (this._renderToken === renderToken) {
+                this._container.style.transition = 'opacity 120ms ease';
+            }
+        });
         if (displayDetails !== null && typeof ankiEntries !== 'undefined') {
             if (ankiEntries.length > 0 && this._options !== null) {
                 const {entry, node} = ankiEntries[0];
