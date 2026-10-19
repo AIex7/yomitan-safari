@@ -94,14 +94,6 @@ export class PopupInline extends EventDispatcher {
         this._ankiNoteBuilder = new AnkiNoteBuilder(this._application.api, this._templateRenderer);
         this._renderToken = null;
         this._audio = new InlinePopupAudio(application.api);
-        this._savedPosition = null;
-        this._positionLoaded = false;
-        this._dragState = null;
-        this._lastPosition = null;
-        this._onDragMove = this._onDragMove.bind(this);
-        this._onDragEnd = this._onDragEnd.bind(this);
-
-        this._container.addEventListener('mousedown', this._onDragStart.bind(this), false);
     }
 
     get id() { return this._id; }
@@ -152,12 +144,12 @@ export class PopupInline extends EventDispatcher {
     }
 
     hideDelayed(delay) {
-        if (this.isPointerOverSelfOrChildren() || this._dragState !== null) { return; }
+        if (this.isPointerOverSelfOrChildren()) { return; }
         if (delay > 0) {
             this.stopHideDelayed();
             this._hidePopupTimer = setTimeout(() => {
                 this._hidePopupTimer = null;
-                if (!this.isPointerOverSelfOrChildren() && this._dragState === null) {
+                if (!this.isPointerOverSelfOrChildren()) {
                     this._startFadeOut();
                 }
             }, delay);
@@ -228,13 +220,12 @@ export class PopupInline extends EventDispatcher {
         this._renderToken = renderToken;
         const ankiEntries = await this._render(displayDetails, renderToken);
         if (this._renderToken !== renderToken) { return; }
-        await this._ensurePositionLoaded();
-        if (this._renderToken !== renderToken) { return; }
         this._position(details.sourceRects);
         this._container.hidden = false;
         this._container.style.display = 'block';
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         if (this._renderToken !== renderToken) { return; }
+        this._resetScrollPosition();
         this._visible = true;
         this._container.style.opacity = '1';
         this._container.style.pointerEvents = '';
@@ -298,49 +289,15 @@ export class PopupInline extends EventDispatcher {
         }
     }
 
-    _onDragStart(e) {
-        if (e.button !== 0) { return; }
-        const target = /** @type {Element?} */ (e.composedPath()[0] ?? null);
-        if (target !== null && target.closest('a, button, input, select, textarea, summary')) { return; }
-
-        this.stopHideDelayed();
-        const rect = this._container.getBoundingClientRect();
-        this._dragState = {
-            offsetX: e.clientX - rect.left,
-            offsetY: e.clientY - rect.top,
-        };
-        window.addEventListener('mousemove', this._onDragMove, true);
-        window.addEventListener('mouseup', this._onDragEnd, true);
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    _onDragMove(e) {
-        if (this._dragState === null) { return; }
-        const {offsetX, offsetY} = this._dragState;
-        const left = e.clientX - offsetX;
-        const top = e.clientY - offsetY;
-        const position = this._clampPosition(left, top);
-        this._applyPosition(position.left, position.top);
-    }
-
-    _onDragEnd() {
-        if (this._dragState === null) { return; }
-        this._dragState = null;
-        window.removeEventListener('mousemove', this._onDragMove, true);
-        window.removeEventListener('mouseup', this._onDragEnd, true);
-        void this._savePosition();
-    }
-
     _startFadeOut() {
-        if (!this._visible || this._dragState !== null) { return; }
+        if (!this._visible) { return; }
         this._container.style.opacity = '0';
         if (this._fadeTimer !== null) {
             clearTimeout(this._fadeTimer);
         }
         this._fadeTimer = setTimeout(() => {
             this._fadeTimer = null;
-            if (!this.isPointerOverSelfOrChildren() && this._dragState === null) {
+            if (!this.isPointerOverSelfOrChildren()) {
                 this.hide(false);
             }
         }, 180);
@@ -384,6 +341,7 @@ export class PopupInline extends EventDispatcher {
     async _render(displayDetails, renderToken) {
         const contentRoot = await this._ensureRenderer();
         if (this._renderToken !== renderToken) { return; }
+        this._resetScrollPosition();
         const fragment = document.createDocumentFragment();
         if (displayDetails === null) {
             if (contentRoot.childElementCount === 0) {
@@ -437,7 +395,15 @@ export class PopupInline extends EventDispatcher {
         if (this._renderToken !== renderToken) { return; }
         contentRoot.replaceChildren(fragment);
         await displayContentManager.executeMediaRequests();
+        this._resetScrollPosition();
         return ankiEntries;
+    }
+
+    _resetScrollPosition() {
+        const scrollContainer = this._shadow.querySelector('.content-scroll');
+        if (!(scrollContainer instanceof HTMLElement)) { return; }
+        scrollContainer.scrollTop = 0;
+        scrollContainer.scrollLeft = 0;
     }
 
     _combineFirstHeadwordReadings(entryNodes) {
@@ -862,41 +828,6 @@ export class PopupInline extends EventDispatcher {
         this._container.style.maxHeight = `${this._initialHeight}px`;
     }
 
-    async _ensurePositionLoaded() {
-        if (this._positionLoaded) { return; }
-        this._positionLoaded = true;
-        const key = this._getPositionStorageKey();
-        const store = await new Promise((resolve) => {
-            chrome.storage.local.get([key], (result) => {
-                resolve(result);
-            });
-        });
-        const value = store[key];
-        if (
-            typeof value === 'object' &&
-            value !== null &&
-            typeof value.left === 'number' &&
-            typeof value.top === 'number'
-        ) {
-            this._savedPosition = {left: value.left, top: value.top};
-        }
-    }
-
-    async _savePosition() {
-        if (this._lastPosition === null) { return; }
-        const key = this._getPositionStorageKey();
-        const value = {left: this._lastPosition.left, top: this._lastPosition.top};
-        this._savedPosition = value;
-        await new Promise((resolve) => {
-            chrome.storage.local.set({[key]: value}, resolve);
-        });
-    }
-
-    _getPositionStorageKey() {
-        const host = window.location.hostname || 'default';
-        return `popupInlinePosition:${host}`;
-    }
-
     _getDefaultPosition(width, height) {
         return this._clampPosition(
             window.innerWidth - width - 16,
@@ -916,7 +847,6 @@ export class PopupInline extends EventDispatcher {
     }
 
     _applyPosition(left, top) {
-        this._lastPosition = {left, top};
         this._container.style.left = `${left}px`;
         this._container.style.top = `${top}px`;
     }
