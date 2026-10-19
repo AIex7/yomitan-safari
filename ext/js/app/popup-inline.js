@@ -933,6 +933,21 @@ export class PopupInline extends EventDispatcher {
     font-size: 0.9em;
     font-weight: 600;
 }
+.definition-list {
+    list-style: none !important;
+    padding-left: 0 !important;
+}
+.definition-tag-list > .tag:not([data-category="dictionary"]) {
+    display: none !important;
+}
+.definition-tag-list .tag[data-category="dictionary"] .tag-label-content {
+    display: none !important;
+}
+.definition-tag-list .tag[data-category="dictionary"] {
+    margin-top: 0.25em;
+    margin-bottom: 0.35em;
+    padding-bottom: 0.2em;
+}
 .entry-current-indicator,
 .entry-current-indicator-icon,
 .action-popup-menu-button,
