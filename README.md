@@ -35,17 +35,17 @@ This extension adds several features on top of the original Yomitan:
     <td width="50%" align="center">
       <img src="https://github.com/user-attachments/assets/24cb6569-f6dd-407c-8314-534d98836518" width="100%" alt="Morphman Mode highlighting unknown words" />
       <br />
-      <b>Morphman Mode</b>
+      <b>Analysis Mode</b>
     </td>
     <td width="50%" align="center">
       <img src="https://github.com/user-attachments/assets/f76b2dc5-b937-43e3-a56a-524b018a2e0c" width="100%" alt="Morphman results with sorting and bulk Anki adding" />
       <br />
-      <b>Morphman Results</b>
+      <b>Analysis Results</b>
     </td>
   </tr>
   <tr>
     <td valign="top">
-      Toggle Morphman Mode to highlight Japanese words starting with kanji that are missing from your Anki collection.
+      Toggle Analysis Mode to highlight Japanese words starting with kanji that are missing from your Anki collection.
     </td>
     <td valign="top">
       View and sort unknown words with their frequencies and sentences, select multiple rows, and add them to Anki with their original context.
