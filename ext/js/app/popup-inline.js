@@ -986,6 +986,9 @@ export class PopupInline extends EventDispatcher {
     line-height: 1;
     vertical-align: baseline;
 }
+.headword-term ruby rt {
+    color: #0031a9;
+}
 .headword-term .inline-bipositional-ruby ruby > rt,
 .headword-term .inline-alternate-reading {
     font-size: 0.6em;
@@ -995,7 +998,7 @@ export class PopupInline extends EventDispatcher {
     left: 50%;
     bottom: -1.16em;
     transform: translateX(-50%);
-    color: var(--headword-current-furigana-text-color);
+    color: #0031a9;
     font-weight: 500;
     line-height: 1;
     white-space: nowrap;
@@ -1086,6 +1089,10 @@ export class PopupInline extends EventDispatcher {
     color: var(--text-color);
 }
 @media (prefers-color-scheme: dark) {
+    .headword-term ruby rt,
+    .headword-term .inline-alternate-reading {
+        color: #2fafff;
+    }
     :host {
         --background-color: #242426;
         --text-color: #f5f5f7;
