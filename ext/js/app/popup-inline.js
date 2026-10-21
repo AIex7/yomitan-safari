@@ -1095,6 +1095,7 @@ export class PopupInline extends EventDispatcher {
     }
     :host {
         --background-color: #242426;
+        --background-color-dark1: #333333;
         --text-color: #f5f5f7;
         --reason-text-color: rgba(245, 245, 247, .68);
         --text-color-light1: rgba(245, 245, 247, .76);
