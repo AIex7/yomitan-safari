@@ -670,7 +670,8 @@ export class AnkiConnect {
     _getDefaultNativeMessagingApplications() {
         /** @type {string[]} */
         const applications = [];
-        const runtimeId = chrome?.runtime?.id;
+        const runtime = (typeof chrome !== 'undefined' ? chrome.runtime : null) ?? (typeof browser !== 'undefined' ? browser.runtime : null);
+        const runtimeId = runtime?.id;
         if (typeof runtimeId === 'string' && runtimeId.length > 0) {
             const extensionId = runtimeId.replace(/\s+\([^)]+\)$/, '');
             applications.push(extensionId);
@@ -725,8 +726,13 @@ export class AnkiConnect {
             };
 
             try {
-                const maybePromise = chrome.runtime.sendNativeMessage(application, message, (response) => {
-                    const error = chrome.runtime.lastError;
+                const runtime = (typeof chrome !== 'undefined' ? chrome.runtime : null) ?? (typeof browser !== 'undefined' ? browser.runtime : null);
+                if (!runtime || typeof runtime.sendNativeMessage !== 'function') {
+                    onReject(new Error('Native messaging is not supported in this environment'));
+                    return;
+                }
+                const maybePromise = runtime.sendNativeMessage(application, message, (response) => {
+                    const error = runtime.lastError;
                     if (error) {
                         onReject(new Error(error.message));
                     } else {

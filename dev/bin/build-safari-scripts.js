@@ -21,6 +21,9 @@ for (const [entryPoint, outputPath] of entryPoints) {
         format: 'iife',
         platform: 'browser',
         target: 'safari17',
+        banner: {
+            js: 'if (typeof chrome === "undefined" && typeof browser !== "undefined") { globalThis.chrome = browser; }',
+        },
         plugins: [{
         name: 'safari-extension-module-urls',
         setup(build) {

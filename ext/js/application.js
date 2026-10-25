@@ -221,7 +221,7 @@ export class Application extends EventDispatcher {
             api.connectToDatabaseWorker(mediaDrawingWorkerToBackendChannel.port1);
         }
         setInterval(() => {
-            void api.heartbeat();
+            void api.heartbeat().catch(() => {});
         }, 20 * 1000);
 
         const {tabId, frameId} = await api.frameInformationGet();
