@@ -1838,10 +1838,15 @@ export class Backend {
     }
 
     /**
-     * @param {unknown} _ignore
+     * @param {unknown} [_ignore]
      */
     _checkLastError(_ignore) {
-        // NOP
+        if (typeof chrome !== 'undefined' && chrome.runtime?.lastError) {
+            void chrome.runtime.lastError;
+        }
+        if (typeof browser !== 'undefined' && browser.runtime?.lastError) {
+            void browser.runtime.lastError;
+        }
     }
 
     /**
@@ -2426,22 +2431,36 @@ export class Backend {
      * @param {chrome.tabs.MessageSendOptions} options
      */
     _sendMessageTabIgnoreResponse(tabId, message, options) {
-        const callback = () => this._checkLastError(chrome.runtime.lastError);
-        chrome.tabs.sendMessage(tabId, message, options, callback);
+        const callback = () => this._checkLastError();
+        try {
+            chrome.tabs.sendMessage(tabId, message, options, callback);
+        } catch (e) {
+            this._checkLastError();
+        }
     }
 
     /**
      * @param {import('application').ApiMessageAny} message
      */
     _sendMessageAllTabsIgnoreResponse(message) {
-        const callback = () => this._checkLastError(chrome.runtime.lastError);
-        chrome.tabs.query({}, (tabs) => {
-            for (const tab of tabs) {
-                const {id} = tab;
-                if (typeof id !== 'number') { continue; }
-                chrome.tabs.sendMessage(id, message, callback);
-            }
-        });
+        const callback = () => this._checkLastError();
+        try {
+            chrome.tabs.query({}, (tabs) => {
+                this._checkLastError();
+                if (!Array.isArray(tabs)) { return; }
+                for (const tab of tabs) {
+                    const {id} = tab;
+                    if (typeof id !== 'number') { continue; }
+                    try {
+                        chrome.tabs.sendMessage(id, message, callback);
+                    } catch (e) {
+                        this._checkLastError();
+                    }
+                }
+            });
+        } catch (e) {
+            this._checkLastError();
+        }
     }
 
     /**
@@ -2457,14 +2476,24 @@ export class Backend {
              * @param {unknown} response
              */
             const callback = (response) => {
+                const error = (typeof chrome !== 'undefined' ? chrome.runtime?.lastError : null) ?? (typeof browser !== 'undefined' ? browser.runtime?.lastError : null);
+                if (error) {
+                    reject(error instanceof Error ? error : new Error(typeof error.message === 'string' ? error.message : 'Unknown tab error'));
+                    return;
+                }
                 try {
                     resolve(/** @type {import('application').ApiReturn<TName>} */ (this._getMessageResponseResult(response)));
-                } catch (error) {
-                    reject(error);
+                } catch (err) {
+                    reject(err);
                 }
             };
 
-            chrome.tabs.sendMessage(tabId, message, options, callback);
+            try {
+                chrome.tabs.sendMessage(tabId, message, options, callback);
+            } catch (err) {
+                this._checkLastError();
+                reject(err);
+            }
         });
     }
 

@@ -68,8 +68,14 @@ export class WebExtension extends EventDispatcher {
      */
     sendMessage(message, responseCallback) {
         try {
-            chrome.runtime.sendMessage(message, responseCallback);
+            chrome.runtime.sendMessage(message, (...args) => {
+                this.getLastError();
+                if (typeof responseCallback === 'function') {
+                    responseCallback(...args);
+                }
+            });
         } catch (error) {
+            this.getLastError();
             this.triggerUnloaded();
             throw toError(error);
         }
@@ -110,7 +116,7 @@ export class WebExtension extends EventDispatcher {
      * @returns {?Error}
      */
     getLastError() {
-        const {lastError} = chrome.runtime;
+        const lastError = (typeof chrome !== 'undefined' ? chrome.runtime?.lastError : null) ?? (typeof browser !== 'undefined' ? browser.runtime?.lastError : null);
         if (lastError) {
             if (lastError instanceof Error) { return lastError; }
             const {message} = lastError;

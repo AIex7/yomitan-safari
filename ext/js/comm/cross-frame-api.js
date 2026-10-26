@@ -182,12 +182,10 @@ export class CrossFrameAPIPort extends EventDispatcher {
     _onAck(id) {
         const invocation = this._activeInvocations.get(id);
         if (typeof invocation === 'undefined') {
-            log.warn(new Error(`Request ${id} not found for acknowledgement`));
             return;
         }
 
         if (invocation.ack) {
-            this._onError(id, `Request ${id} already acknowledged`);
             return;
         }
 
@@ -215,7 +213,6 @@ export class CrossFrameAPIPort extends EventDispatcher {
     _onResult(id, data) {
         const invocation = this._activeInvocations.get(id);
         if (typeof invocation === 'undefined') {
-            log.warn(new Error(`Request ${id} not found`));
             return;
         }
 
@@ -326,6 +323,8 @@ export class CrossFrameAPI {
         this._responseTimeout = 10000; // 10 seconds
         /** @type {Map<number, Map<number, CrossFrameAPIPort>>} */
         this._commPorts = new Map();
+        /** @type {Map<string, Promise<CrossFrameAPIPort>>} */
+        this._pendingCommPorts = new Map();
         /** @type {import('cross-frame-api').ApiMap} */
         this._apiMap = new Map();
         /** @type {(port: CrossFrameAPIPort) => void} */
@@ -445,7 +444,15 @@ export class CrossFrameAPI {
                 return commPort;
             }
         }
-        return await this._createCommPort(otherTabId, otherFrameId);
+        const key = `${otherTabId}:${otherFrameId}`;
+        let pending = this._pendingCommPorts.get(key);
+        if (typeof pending === 'undefined') {
+            pending = this._createCommPort(otherTabId, otherFrameId).finally(() => {
+                this._pendingCommPorts.delete(key);
+            });
+            this._pendingCommPorts.set(key, pending);
+        }
+        return await pending;
     }
 
     /**
@@ -478,6 +485,10 @@ export class CrossFrameAPI {
         if (typeof tabPorts === 'undefined') {
             tabPorts = new Map();
             this._commPorts.set(otherTabId, tabPorts);
+        }
+        const existingPort = tabPorts.get(otherFrameId);
+        if (typeof existingPort !== 'undefined') {
+            existingPort.disconnect();
         }
         tabPorts.set(otherFrameId, commPort);
         commPort.prepare();
