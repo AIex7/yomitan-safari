@@ -1,8 +1,5 @@
 # Yomitan
 
-
-## Screenshots
-
 Yomitan turns your web browser into a tool for building language literacy by helping you read texts that would otherwise be too difficult to tackle in a variety of supported languages.
 
 This extension is a total rewrite to support Safari while adding several features on top of the original Yomitan:
