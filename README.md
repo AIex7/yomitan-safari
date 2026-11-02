@@ -3,14 +3,16 @@
 
 ## Screenshots
 
-This extension adds several features on top of the original Yomitan:
+Yomitan turns your web browser into a tool for building language literacy by helping you read texts that would otherwise be too difficult to tackle in a variety of supported languages.
+
+This extension is a total rewrite to support Safari while adding several features on top of the original Yomitan:
 
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="https://github.com/user-attachments/assets/42242501-39b4-4757-bcba-0a99e04628b4" width="100%" alt="Multi-line Texthooker" />
+      <img src="https://github.com/user-attachments/assets/55804c49-eb73-4114-9cab-9a90da7c77b7" width="100%" alt="Multi-line Texthooker" />
       <br />
-      <b>Multi-line Texthooker</b>
+      <b>Revised UI</b>
     </td>
     <td width="50%" align="center">
       <img src="https://github.com/user-attachments/assets/197403b8-2d22-4ef6-83e2-3296c7a7cf58" width="100%" alt="Image Viewer with OCR" />
@@ -20,7 +22,7 @@ This extension adds several features on top of the original Yomitan:
   </tr>
   <tr>
     <td valign="top">
-      A separate texthooker that supports displaying multiple lines of text with furigana.
+      Alternate readings are displayed below the word.
     </td>
     <td valign="top">
       An image viewer that supports live text scanning using macOS's native OCR model.
@@ -45,7 +47,7 @@ This extension adds several features on top of the original Yomitan:
   </tr>
   <tr>
     <td valign="top">
-      Toggle Analysis Mode to highlight Japanese words starting with kanji that are missing from your Anki collection.
+      Toggle Analysis Mode to highlight words that are missing from your Anki collection.
     </td>
     <td valign="top">
       View and sort unknown words with their frequencies and sentences, select multiple rows, and add them to Anki with their original context.
@@ -53,23 +55,6 @@ This extension adds several features on top of the original Yomitan:
   </tr>
 </table>
 
-
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="https://github.com/user-attachments/assets/55804c49-eb73-4114-9cab-9a90da7c77b7" width="100%" alt="Revised UI with multiple readings" />
-      <br />
-      <b>Revised UI</b>
-    </td>
-    <td width="50%"></td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      Alternate readings are displayed below the word.
-    </td>
-    <td width="50%"></td>
-  </tr>
-</table>
 
 
 
